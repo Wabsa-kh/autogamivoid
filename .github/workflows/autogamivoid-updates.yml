@@ -1,0 +1,25 @@
+name: Update check (published games)
+
+# Re-checks every game already listed on gamivoid (from state.json) against
+# the sources' fresh listings and PATCHes only the ones whose download link or
+# version changed. New games are NOT added here; that's the catalog workflow's
+# job.
+
+on:
+  schedule:
+    # Daily at 05:00 UTC.
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no writes)'
+        type: boolean
+        default: false
+
+jobs:
+  updates:
+    uses: ./.github/workflows/autogamivoid-run.yml
+    with:
+      action: updates
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+    secrets: inherit

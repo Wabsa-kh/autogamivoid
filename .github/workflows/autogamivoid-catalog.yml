@@ -1,0 +1,31 @@
+name: Catalog import (A-Z all games)
+
+# Walks the full A-Z catalogs on Steamrip + Steamunlocked and imports every
+# game into gamivoid, `action_limit` listings per run, resuming where the
+# previous run stopped (state.json). The first full import of ~25k games
+# completes over a series of scheduled runs; raise AUTOGAMIVOID_ACTION_LIMIT
+# to go faster.
+
+on:
+  schedule:
+    # Every 6 hours; each run imports up to action_limit games then resumes.
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      action_limit:
+        description: 'Max publish actions this run'
+        required: false
+        default: '200'
+      dry_run:
+        description: 'Dry run (no writes)'
+        type: boolean
+        default: false
+
+jobs:
+  catalog:
+    uses: ./.github/workflows/autogamivoid-run.yml
+    with:
+      action: catalog
+      action_limit: ${{ github.event_name == 'workflow_dispatch' && inputs.action_limit || '200' }}
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+    secrets: inherit

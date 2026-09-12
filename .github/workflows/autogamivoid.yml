@@ -1,0 +1,25 @@
+name: Fresh sync (new + changed games)
+
+# Scrapes the sources' fresh listings (homepage/recent pages), matches them,
+# and publishes NEW games plus PATCHes changed downloads. The full A-Z import
+# lives in autogamivoid-catalog.yml; re-checks of already-published games run
+# daily via autogamivoid-updates.yml.
+
+on:
+  schedule:
+    # Sundays at 03:00 UTC.
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no writes)'
+        type: boolean
+        default: false
+
+jobs:
+  sync:
+    uses: ./.github/workflows/autogamivoid-run.yml
+    with:
+      action: sync
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+    secrets: inherit
