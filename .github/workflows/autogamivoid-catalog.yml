@@ -21,6 +21,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: write
+
 jobs:
   catalog:
     uses: ./.github/workflows/autogamivoid-run.yml

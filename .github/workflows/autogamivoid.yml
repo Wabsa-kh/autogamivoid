@@ -16,6 +16,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: write
+
 jobs:
   sync:
     uses: ./.github/workflows/autogamivoid-run.yml
