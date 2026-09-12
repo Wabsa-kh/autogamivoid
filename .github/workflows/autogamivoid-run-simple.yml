@@ -4,9 +4,23 @@ on:
   workflow_call:
     inputs:
       action:
-        description: 'Which run action'
         required: true
         type: string
+      action_limit:
+        required: false
+        type: string
+        default: '200'
+      dry_run:
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: autogamivoid-${{ inputs.action }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   run:
@@ -20,8 +34,5 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Echo action
-        run: echo "action is ${{ inputs.action }}"
+      - name: Echo flags
+        run: echo "action=${{ inputs.action }} limit=${{ inputs.action_limit }} dry=${{ inputs.dry_run && 'yes' || 'no' }}"
