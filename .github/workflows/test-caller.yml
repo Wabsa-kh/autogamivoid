@@ -5,6 +5,6 @@ on:
 
 jobs:
   t:
-    uses: ./.github/workflows/smoke-reusable.yml
+    uses: ./.github/workflows/autogamivoid-run-simple.yml
     with:
-      who: bisect
+      action: catalog

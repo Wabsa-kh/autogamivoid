@@ -1,0 +1,27 @@
+name: Autogamivoid run simple
+
+on:
+  workflow_call:
+    inputs:
+      action:
+        description: 'Which run action'
+        required: true
+        type: string
+
+jobs:
+  run:
+    name: ${{ inputs.action }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      AUTOGAMIVOID_CONFIG: autogamivoid.config.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Echo action
+        run: echo "action is ${{ inputs.action }}"
