@@ -36,41 +36,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      AUTOGAMIVOID_CONFIG: autogamivoid/config.json
+      AUTOGAMIVOID_CONFIG: autogamivoid.config.json
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          # Default (true) persists the workflow token so the state-commit
-          # step can push at the end of the run.
-          persist-credentials: true
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-rust-toolchain@v1
-        with:
-          rustup-toolchain: stable
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo
-        uses: actions/cache@0057852bfaa89a567450d5838078e36cf38b85af677262
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-autogamivoid-${{ hashFiles('**/Cargo.toml', 'Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-autogamivoid-
+        uses: Swatinem/rust-cache@v2
 
       - name: Write config from secrets
         run: |
-          mkdir -p autogamivoid
           python3 - <<'PY'
           import json, os
           from pathlib import Path
 
           base = Path(os.environ["AUTOGAMIVOID_CONFIG"])
-          base.parent.mkdir(parents=True, exist_ok=True)
+          key = os.environ.get("GAMIVOID_PUBLISHING_KEY", "")
 
           config = {
               "gamivoid_api_base": os.environ.get("GAMIVOID_API_BASE", "https://gamivoid.site"),
-              "gamivoid_publishing_key": os.environ["GAMIVOID_PUBLISHING_KEY"],
+              "gamivoid_publishing_key": key,
               "steam_api_key": os.environ.get("STEAM_WEB_API_KEY") or None,
               "sources": {
                   "steamrip": {
@@ -87,11 +73,14 @@ jobs:
                   "seconds_limit": int(os.environ.get("AUTOGAMIVOID_SECONDS_LIMIT", "2700")),
                   "request_pause_ms": int(os.environ.get("AUTOGAMIVOID_REQUEST_PAUSE_MS", "250")),
               },
-              "state_path": "autogamivoid/state.json",
-              "dry_run": os.environ.get("AUTOGAMIVOID_DRY_RUN", "false") == "true",
+              "state_path": "state.json",
+              "dry_run": (not key) or os.environ.get("AUTOGAMIVOID_DRY_RUN", "false") == "true",
           }
 
           base.write_text(json.dumps(config, indent=2), encoding="utf-8")
+
+          if not key:
+              print("::warning::GAMIVOID_PUBLISHING_KEY secret is not set - forcing dry-run (no writes)")
           PY
         env:
           GAMIVOID_PUBLISHING_KEY: ${{ secrets.GAMIVOID_PUBLISHING_KEY }}
@@ -103,26 +92,19 @@ jobs:
           AUTOGAMIVOID_DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
 
       - name: Build autogamivoid
-        run: cargo build -p autogamivoid --release
+        run: cargo build --release
 
       - name: Run (${{ inputs.action }})
-        run: |
-          if [ -z "$GAMIVOID_PUBLISHING_KEY" ]; then
-            echo "::warning::GAMIVOID_PUBLISHING_KEY secret is not set - forcing dry-run (no writes)"
-            cargo run -p autogamivoid --release -- --action ${{ inputs.action }} --dry-run
-          else
-            cargo run -p autogamivoid --release -- --action ${{ inputs.action }}
-          fi
+        run: cargo run --release -- --action ${{ inputs.action }}
         env:
-          AUTOGAMIVOID_CONFIG: autogamivoid/config.json
-          GAMIVOID_PUBLISHING_KEY: ${{ secrets.GAMIVOID_PUBLISHING_KEY }}
+          AUTOGAMIVOID_CONFIG: autogamivoid.config.json
 
       - name: Commit updated state
         run: |
-          git config user.email "autogamivoid@github-actions.example"
-          git config user.name "autogamivoid"
-          git add autogamivoid/state.json autogamivoid/published-games.json 2>/dev/null || true
-          if git diff --cached --exit-code; then
+          git config user.email "autogamivoid@users.noreply.github.com"
+          git config user.name "autogamivoid-bot"
+          git add state.json published-games.json 2>/dev/null || true
+          if git diff --cached --quiet; then
             echo "State files unchanged"
           else
             git commit -m "autogamivoid: update state after ${{ inputs.action }} run" || true
