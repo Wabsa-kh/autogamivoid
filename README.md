@@ -163,6 +163,27 @@ repo, which is what makes the next run resume and skip unchanged games.
 - **Bounded runs**: `batch.action_limit` + `seconds_limit` stop each run cleanly;
   the next scheduled run continues where it left off.
 
+## Cloudflare: letting the automation through
+
+If runs fail with a **Cloudflare bot challenge** ("Just a moment..."), GitHub's
+runner IPs are being challenged by gamivoid.site's Cloudflare settings. Since
+the site is your own zone, fix it in the Cloudflare dashboard:
+
+1. **Security → Bot Fight Mode → Off** (it cannot be bypassed by rules on the
+   free plan, and it blocks datacenter IPs wholesale).
+2. **Security → WAF → Custom rules → Create rule**:
+   - Name: `Allow API to automation`
+   - Expression: `(http.host eq "gamivoid.site" and starts_with(http.request.uri.path, "/api/"))`
+   - Action: **Skip** — enable skipping for Bot Fight-derived managed rules and
+     super bot fight mode where available.
+   - Order it **above** any other rules.
+3. Alternatively (no Cloudflare change): run the automation from a machine with
+   a trusted IP — e.g. a free-tier VPS with `autogamivoid` on a cron, using the
+   same `config.json` shape.
+
+The client also sends browser-style headers and detects challenge pages,
+reporting a clear error instead of raw HTML when a block happens.
+
 ## Notes on sources
 
 Both sites are WordPress-ish listings without public APIs. If a site changes

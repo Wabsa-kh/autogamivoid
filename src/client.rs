@@ -16,6 +16,9 @@ impl HttpClient {
         let base_url = Url::parse(base_url)?;
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(60))
+            // Some Cloudflare configurations challenge non-browser user agents
+            // outright; identifying as a normal client avoids that class of block.
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
             .build()?;
 
         Ok(Self {
@@ -69,7 +72,8 @@ impl HttpClient {
                 .client
                 .request(method.clone(), url.clone())
                 .header("Authorization", format!("Bearer {}", self.bearer_token))
-                .header("Content-Type", "application/json");
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json");
 
             if let Some(body) = body {
                 request = request.body(serde_json::to_string(body)?);
@@ -103,6 +107,16 @@ impl HttpClient {
             let bytes = response.bytes().await?;
             if !status.is_success() {
                 let text = String::from_utf8_lossy(&bytes);
+                if is_cloudflare_challenge(&text) {
+                    anyhow::bail!(
+                        "Cloudflare bot challenge blocked {status} {url}. \
+                         The runner's IP is not trusted by gamivoid.site's Cloudflare settings. \
+                         Fix: in the Cloudflare dashboard for gamivoid.site, add a WAF rule \
+                         'URI Path starts with /api/' -> Skip (available: Managed Rules, Bot Fight Mode \
+                         cannot be skipped on the free plan - turn it off instead). \
+                         See README section 'Cloudflare: letting the automation through'."
+                    );
+                }
                 anyhow::bail!("API request failed: {status} {url} — {}", text.chars().take(300).collect::<String>());
             }
 
@@ -129,6 +143,16 @@ fn backoff_delay(attempt: u32) -> Duration {
     base + jitter + Duration::from_millis(100 * attempt as u64)
 }
 
+/// Detect Cloudflare's interstitial challenge page ("Just a moment...") so we
+/// can emit an actionable error instead of raw HTML.
+fn is_cloudflare_challenge(body: &str) -> bool {
+    let lower = body.to_lowercase();
+    lower.contains("just a moment")
+        || lower.contains("challenge-platform")
+        || (lower.contains("cloudflare") && lower.contains("cf-chl"))
+        || lower.contains("attention required! | cloudflare")
+}
+
 fn rand_millis() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     let t = SystemTime::now()
@@ -147,5 +171,18 @@ mod tests {
         let early = backoff_delay(1);
         let late = backoff_delay(4);
         assert!(late > early);
+    }
+
+    #[test]
+    fn detects_cloudflare_challenge_pages() {
+        assert!(is_cloudflare_challenge(
+            "<html><title>Just a moment...</title></html>"
+        ));
+        assert!(is_cloudflare_challenge(
+            "<script src=\"/cdn-cgi/challenge-platform/h/b/orchestrate\">"
+        ));
+        assert!(!is_cloudflare_challenge(
+            "{\"categories\":[\"Action\"]}"
+        ));
     }
 }
