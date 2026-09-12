@@ -52,16 +52,16 @@ jobs:
           key = os.environ.get("GAMIVOID_PUBLISHING_KEY", "")
 
           config = {
-              "gamivoid_api_base": os.environ.get("GAMIVOID_API_BASE", "https://gamivoid.site"),
+              "gamivoid_api_base": os.environ.get("GAMIVOID_API_BASE") or "https://gamivoid.site",
               "gamivoid_publishing_key": key,
               "steam_api_key": os.environ.get("STEAM_WEB_API_KEY") or None,
               "sources": {
                   "steamrip": {
-                      "base_url": os.environ.get("STEAMRIP_BASE_URL", "https://steamrip.com"),
+                      "base_url": os.environ.get("STEAMRIP_BASE_URL") or "https://steamrip.com",
                       "headers": {}
                   },
                   "steamunlocked": {
-                      "base_url": os.environ.get("STEAMUNLOCKED_BASE_URL", "https://steamunlocked.net"),
+                      "base_url": os.environ.get("STEAMUNLOCKED_BASE_URL") or "https://steamunlocked.net",
                       "headers": {}
                   },
               },
