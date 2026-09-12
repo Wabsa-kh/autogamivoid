@@ -29,6 +29,6 @@ jobs:
     uses: ./.github/workflows/autogamivoid-run.yml
     with:
       action: catalog
-      action_limit: ${{ github.event_name == 'workflow_dispatch' && inputs.action_limit || '200' }}
+      action_limit: ${{ github.event_name == 'workflow_dispatch' && inputs.action_limit || (vars.AUTOGAMIVOID_ACTION_LIMIT || '200') }}
       dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
     secrets: inherit
