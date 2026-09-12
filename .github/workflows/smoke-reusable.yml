@@ -1,0 +1,17 @@
+name: Smoke reusable
+
+on:
+  workflow_call:
+    inputs:
+      who:
+        required: false
+        type: string
+        default: 'world'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Greet
+        run: echo "hello ${{ inputs.who }}"
