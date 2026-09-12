@@ -1211,6 +1211,1406 @@
     "publishedAt": "2026-09-12T21:00:12Z"
   },
   {
+    "slug": "a-slit-of-joy",
+    "title": "A Slit of Joy",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:16Z"
+  },
+  {
+    "slug": "a-solitaire-mystery",
+    "title": "A Solitaire Mystery",
+    "version": "1.5.12b",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:18Z"
+  },
+  {
+    "slug": "a-space-for-the-unbound",
+    "title": "A Space for the Unbound",
+    "version": "1.0.33",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:19Z"
+  },
+  {
+    "slug": "a-story-about-my-uncle",
+    "title": "A Story About My Uncle",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:20Z"
+  },
+  {
+    "slug": "a-story-beside",
+    "title": "A Story Beside",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:22Z"
+  },
+  {
+    "slug": "a-study-in-steampunk-choice-by-gaslight",
+    "title": "A Study in Steampunk: Choice by Gaslight",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:23Z"
+  },
+  {
+    "slug": "a-tale-of-paper-refolded",
+    "title": "A Tale of Paper: Refolded",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:27Z"
+  },
+  {
+    "slug": "a-tiny-space-adventure",
+    "title": "A Tiny Space Adventure",
+    "version": "1.2",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:32Z"
+  },
+  {
+    "slug": "a-tiny-sticker-tale",
+    "title": "A Tiny Sticker Tale",
+    "version": "1.0.7",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:34Z"
+  },
+  {
+    "slug": "a-total-war-saga-thrones-of-britannia",
+    "title": "A Total War Saga: THRONES OF BRITANNIA",
+    "version": "1.2.3",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:35Z"
+  },
+  {
+    "slug": "a-train-all-aboard-tourism",
+    "title": "A-Train: All Aboard! Tourism",
+    "version": "2025.01.20",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:52Z"
+  },
+  {
+    "slug": "a-twisted-place",
+    "title": "A Twisted Place",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:36Z"
+  },
+  {
+    "slug": "a-twisted-tale",
+    "title": "A Twisted Tale",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:39Z"
+  },
+  {
+    "slug": "a-vampyre-story",
+    "title": "A Vampyre Story",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:40Z"
+  },
+  {
+    "slug": "a-way-out",
+    "title": "A Way Out",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:40Z"
+  },
+  {
+    "slug": "a-webbing-journey",
+    "title": "A Webbing Journey",
+    "version": "0.11.11",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:41Z"
+  },
+  {
+    "slug": "a-wise-use-of-time",
+    "title": "A Wise Use of Time",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:45Z"
+  },
+  {
+    "slug": "a-world-of-keflings",
+    "title": "A World of Keflings",
+    "version": "351.10",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:46Z"
+  },
+  {
+    "slug": "a-world-of-little-legends",
+    "title": "A World of Little Legends",
+    "version": "0.51.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:49Z"
+  },
+  {
+    "slug": "a-year-of-springs",
+    "title": "A YEAR OF SPRINGS",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:50Z"
+  },
+  {
+    "slug": "aaero",
+    "title": "Aaero",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:57Z"
+  },
+  {
+    "slug": "aaero2",
+    "title": "Aaero2",
+    "version": "1.57",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:59Z"
+  },
+  {
+    "slug": "aarik-and-the-ruined-kingdom",
+    "title": "Aarik and the Ruined Kingdom",
+    "version": "1.3.37",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:01Z"
+  },
+  {
+    "slug": "aau-black-site",
+    "title": "A.A.U. Black Site",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:54Z"
+  },
+  {
+    "slug": "ab",
+    "title": "A=B",
+    "version": "2022.04.01",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:56Z"
+  },
+  {
+    "slug": "abalon-roguelike-tactics-ccg",
+    "title": "Abalon: Roguelike Tactics CCG",
+    "version": "2.42.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:02Z"
+  },
+  {
+    "slug": "abandon-ship",
+    "title": "Abandon Ship",
+    "version": "1.3.25779",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:02Z"
+  },
+  {
+    "slug": "abandoned-archive",
+    "title": "Abandoned Archive",
+    "version": "1.1.5",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:04Z"
+  },
+  {
+    "slug": "abandoned-souls",
+    "title": "Abandoned Souls",
+    "version": "2.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:08Z"
+  },
+  {
+    "slug": "abandoned-world",
+    "title": "Abandoned World",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:10Z"
+  },
+  {
+    "slug": "abathor",
+    "title": "Abathor",
+    "version": "1.1.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:11Z"
+  },
+  {
+    "slug": "abermore",
+    "title": "Abermore",
+    "version": "2022.04.07",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:13Z"
+  },
+  {
+    "slug": "abi-and-the-soul",
+    "title": "Abi and the soul",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:14Z"
+  },
+  {
+    "slug": "abiotic-factor",
+    "title": "Abiotic Factor",
+    "version": "1.4.0.28206 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:15Z"
+  },
+  {
+    "slug": "abo-khashem",
+    "title": "Abo Khashem",
+    "version": "1.0.7.5",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:17Z"
+  },
+  {
+    "slug": "abomi-nation",
+    "title": "Abomi Nation",
+    "version": "1.3.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:18Z"
+  },
+  {
+    "slug": "above-snakes",
+    "title": "Above Snakes",
+    "version": "1.4.5",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:19Z"
+  },
+  {
+    "slug": "above-the-snow",
+    "title": "Above the Snow",
+    "version": "1.2.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:22Z"
+  },
+  {
+    "slug": "abra-cooking-dabra",
+    "title": "Abra-Cooking-Dabra",
+    "version": "1.0.13",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:23Z"
+  },
+  {
+    "slug": "abrasion",
+    "title": "Abrasion",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:25Z"
+  },
+  {
+    "slug": "absinth",
+    "title": "Absinth",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:26Z"
+  },
+  {
+    "slug": "absinthia",
+    "title": "Absinthia",
+    "version": "1.02",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:28Z"
+  },
+  {
+    "slug": "absolum",
+    "title": "Absolum",
+    "version": "2026.08.07",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:29Z"
+  },
+  {
+    "slug": "absolute-drift",
+    "title": "Absolute Drift",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:30Z"
+  },
+  {
+    "slug": "absolute-fear-aooni",
+    "title": "Absolute Fear -AOONI-",
+    "version": "0.8.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:34Z"
+  },
+  {
+    "slug": "absolute-tactics-daughters-of-mercy",
+    "title": "Absolute Tactics: Daughters of Mercy",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:35Z"
+  },
+  {
+    "slug": "absolver",
+    "title": "Absolver",
+    "version": "1.31",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:36Z"
+  },
+  {
+    "slug": "absorber",
+    "title": "Absorber",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:38Z"
+  },
+  {
+    "slug": "abyss-of-the-sacrifice",
+    "title": "ABYSS OF THE SACRIFICE",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:39Z"
+  },
+  {
+    "slug": "abyss-school",
+    "title": "Abyss School",
+    "version": "1.8.8",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:41Z"
+  },
+  {
+    "slug": "abyss-the-wraiths-of-eden",
+    "title": "Abyss: The Wraiths of Eden",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:42Z"
+  },
+  {
+    "slug": "abyssus",
+    "title": "Abyssus",
+    "version": "1.3.62817 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:42Z"
+  },
+  {
+    "slug": "abzu",
+    "title": "ABZU",
+    "version": "1.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:44Z"
+  },
+  {
+    "slug": "academagia-the-making-of-mages",
+    "title": "Academagia: The Making of Mages",
+    "version": "3.0.22",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:47Z"
+  },
+  {
+    "slug": "academia-school-simulator",
+    "title": "Academia: School Simulator",
+    "version": "1.0.44",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:49Z"
+  },
+  {
+    "slug": "academy-love-saga-tennis-angels-ex",
+    "title": "Academy Love Saga: Tennis Angels EX",
+    "version": "1.1.0 &amp; uncensored",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:49Z"
+  },
+  {
+    "slug": "accel-world-vs-sword-art-online-deluxe-edition",
+    "title": "Accel World Vs. Sword Art Online Deluxe Edition",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:51Z"
+  },
+  {
+    "slug": "acceptable-losses",
+    "title": "Acceptable Losses",
+    "version": "1.0.09",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:52Z"
+  },
+  {
+    "slug": "access-denied-escape",
+    "title": "Access Denied: Escape",
+    "version": "1.0.3",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:54Z"
+  },
+  {
+    "slug": "ace-attorney-investigations-collection",
+    "title": "Ace Attorney Investigations Collection",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:54Z"
+  },
+  {
+    "slug": "ace-combat-7-skies-unknown",
+    "title": "ACE COMBAT 7: SKIES UNKNOWN",
+    "version": "2022.05.25 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:56Z"
+  },
+  {
+    "slug": "aces-amp-adventures",
+    "title": "Aces &amp; Adventures",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:57Z"
+  },
+  {
+    "slug": "aces-wild-manic-brawling-action",
+    "title": "Aces Wild: Manic Brawling Action!",
+    "version": "1.0.12",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:16:59Z"
+  },
+  {
+    "slug": "acesurvivor",
+    "title": "ACESurvivor",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:01Z"
+  },
+  {
+    "slug": "achilles-legends-untold",
+    "title": "Achilles: Legends Untold",
+    "version": "35084",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:02Z"
+  },
+  {
+    "slug": "achilles-survivor",
+    "title": "Achilles: Survivor",
+    "version": "1.4.13193 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:03Z"
+  },
+  {
+    "slug": "acid-spy",
+    "title": "Acid Spy",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:05Z"
+  },
+  {
+    "slug": "acolony",
+    "title": "AColony",
+    "version": "0.6.055",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:07Z"
+  },
+  {
+    "slug": "acolyte",
+    "title": "Acolyte",
+    "version": "1.0.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:08Z"
+  },
+  {
+    "slug": "acolyte-of-the-altar",
+    "title": "Acolyte of the Altar",
+    "version": "1.0.85",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:10Z"
+  },
+  {
+    "slug": "aconitum",
+    "title": "Aconitum",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:14Z"
+  },
+  {
+    "slug": "acres",
+    "title": "ACRES",
+    "version": "0.19.16",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:17Z"
+  },
+  {
+    "slug": "across-the-grooves",
+    "title": "Across the Grooves",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:19Z"
+  },
+  {
+    "slug": "across-the-obelisk",
+    "title": "Across the Obelisk",
+    "version": "1.7.6.2 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:20Z"
+  },
+  {
+    "slug": "act-of-war-high-treason",
+    "title": "Act of War: High Treason",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:21Z"
+  },
+  {
+    "slug": "acting-lessons",
+    "title": "Acting Lessons",
+    "version": "1.0.2 &amp; uncensored",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:22Z"
+  },
+  {
+    "slug": "action-arcade-wrestling",
+    "title": "Action Arcade Wrestling",
+    "version": "1.7.4",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:24Z"
+  },
+  {
+    "slug": "action-ball-2",
+    "title": "Action Ball 2",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:26Z"
+  },
+  {
+    "slug": "action-henk",
+    "title": "Action Henk",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:27Z"
+  },
+  {
+    "slug": "action-sandbox",
+    "title": "ACTION SANDBOX",
+    "version": "1.20",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:28Z"
+  },
+  {
+    "slug": "active-soccer-3",
+    "title": "Active Soccer 3",
+    "version": "1.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:30Z"
+  },
+  {
+    "slug": "actraiser-renaissance",
+    "title": "Actraiser Renaissance",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:31Z"
+  },
+  {
+    "slug": "ad-infernum",
+    "title": "Ad Infernum",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:34Z"
+  },
+  {
+    "slug": "ad-infinitum",
+    "title": "Ad Infinitum",
+    "version": "1.0.8",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:35Z"
+  },
+  {
+    "slug": "adabana-odd-tales",
+    "title": "Adabana Odd Tales",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:38Z"
+  },
+  {
+    "slug": "adaca",
+    "title": "ADACA",
+    "version": "1.3.8",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:39Z"
+  },
+  {
+    "slug": "adaptory",
+    "title": "Adaptory",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:41Z"
+  },
+  {
+    "slug": "adios",
+    "title": "Adios",
+    "version": "1.0.06",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:43Z"
+  },
+  {
+    "slug": "adorable-adventures",
+    "title": "Adorable Adventures",
+    "version": "1.1.0.8760",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:44Z"
+  },
+  {
+    "slug": "adore",
+    "title": "Adore",
+    "version": "1.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:46Z"
+  },
+  {
+    "slug": "advent-neon",
+    "title": "Advent NEON",
+    "version": "2026.02.21",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:47Z"
+  },
+  {
+    "slug": "adventure-of-samsara",
+    "title": "Adventure of Samsara",
+    "version": "2.0.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:49Z"
+  },
+  {
+    "slug": "adventure-rush",
+    "title": "Adventure Rush",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:50Z"
+  },
+  {
+    "slug": "adventure-time-pirates-of-the-enchiridion",
+    "title": "Adventure Time: Pirates Of The Enchiridion",
+    "version": "20181024",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:52Z"
+  },
+  {
+    "slug": "adventures-of-bertram-fiddle-1-a-dreadly-business",
+    "title": "Adventures of Bertram Fiddle 1: A Dreadly Business",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:54Z"
+  },
+  {
+    "slug": "adventures-of-bertram-fiddle-2-a-bleaker-predicklement",
+    "title": "Adventures of Bertram Fiddle 2: A Bleaker Predicklement",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:17:56Z"
+  },
+  {
+    "slug": "adventures-of-chris",
+    "title": "Adventures of Chris",
+    "version": "1.0.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:01Z"
+  },
+  {
+    "slug": "adverse",
+    "title": "ADVERSE",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:03Z"
+  },
+  {
+    "slug": "aeolis-tournament",
+    "title": "Aeolis Tournament",
+    "version": "2.0.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:05Z"
+  },
+  {
+    "slug": "aeon-drive",
+    "title": "Aeon Drive",
+    "version": "1.4.03",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:06Z"
+  },
+  {
+    "slug": "aeon-must-die",
+    "title": "Aeon Must Die!",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:07Z"
+  },
+  {
+    "slug": "aer-memories-of-old",
+    "title": "AER Memories Of Old",
+    "version": "1.0.4.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:08Z"
+  },
+  {
+    "slug": "aerial-platforms",
+    "title": "Aerial Platforms",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:11Z"
+  },
+  {
+    "slug": "aero-battle-royale",
+    "title": "AERO BATTLE ROYALE",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:12Z"
+  },
+  {
+    "slug": "aero-gpx",
+    "title": "Aero GPX",
+    "version": "2026.06.20",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:14Z"
+  },
+  {
+    "slug": "aerofly-fs-2-flight-simulator",
+    "title": "Aerofly FS 2 Flight Simulator",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:15Z"
+  },
+  {
+    "slug": "aerofly-fs-4-flight-simulator",
+    "title": "Aerofly FS 4 Flight Simulator",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:15Z"
+  },
+  {
+    "slug": "aeruta",
+    "title": "Aeruta",
+    "version": "1.2.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:19Z"
+  },
+  {
+    "slug": "aestheta",
+    "title": "Aestheta",
+    "version": "1.1.0.4",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:21Z"
+  },
+  {
+    "slug": "aestik",
+    "title": "Aestik",
+    "version": "2.0.3a",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:23Z"
+  },
+  {
+    "slug": "aeterna-noctis",
+    "title": "Aeterna Noctis",
+    "version": "3.0 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:24Z"
+  },
+  {
+    "slug": "aeternoblade",
+    "title": "AeternoBlade",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:26Z"
+  },
+  {
+    "slug": "aether-amp-iron",
+    "title": "Aether &amp; Iron",
+    "version": "1.1.354",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:27Z"
+  },
+  {
+    "slug": "aether-collector",
+    "title": "Aether Collector",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:29Z"
+  },
+  {
+    "slug": "aetheris",
+    "title": "AETHERIS",
+    "version": "1.0.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:30Z"
+  },
+  {
+    "slug": "aethermancer",
+    "title": "Aethermancer",
+    "version": "0.7.1.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:31Z"
+  },
+  {
+    "slug": "aethus",
+    "title": "AETHUS",
+    "version": "1.036 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:32Z"
+  },
+  {
+    "slug": "aew-fight-forever",
+    "title": "AEW: Fight Forever",
+    "version": "1.01",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:34Z"
+  },
+  {
+    "slug": "afallon",
+    "title": "Afallon",
+    "version": "0.14.0.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:35Z"
+  },
+  {
+    "slug": "affairs-of-the-court-choice-of-romance",
+    "title": "Affairs of the Court: Choice of Romance",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:37Z"
+  },
+  {
+    "slug": "affogato",
+    "title": "Affogato",
+    "version": "1.0.19",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:38Z"
+  },
+  {
+    "slug": "after-death",
+    "title": "After Death",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:39Z"
+  },
+  {
+    "slug": "after-i-met-that-catgirl-my-questlist-got-too-long",
+    "title": "After I met that catgirl, my questlist got too long!",
+    "version": "1.7 &amp; uncensored",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:41Z"
+  },
+  {
+    "slug": "after-inc-revival",
+    "title": "After Inc: Revival",
+    "version": "1.0.0.7 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:43Z"
+  },
+  {
+    "slug": "after-stream",
+    "title": "After Stream",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:44Z"
+  },
+  {
+    "slug": "after-the-collapse",
+    "title": "After the Collapse",
+    "version": "1.5.1.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:46Z"
+  },
+  {
+    "slug": "after-the-first-station",
+    "title": "After the first station",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:48Z"
+  },
+  {
+    "slug": "afterblast",
+    "title": "AFTERBLAST",
+    "version": "0.2.0.669",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:49Z"
+  },
+  {
+    "slug": "afterburn",
+    "title": "AFTERBURN",
+    "version": "1.01",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:51Z"
+  },
+  {
+    "slug": "afterimage",
+    "title": "Afterimage",
+    "version": "2024.05.29",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:52Z"
+  },
+  {
+    "slug": "afterlove-ep",
+    "title": "Afterlove EP",
+    "version": "1.0.15",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:53Z"
+  },
+  {
+    "slug": "afterparty",
+    "title": "Afterparty",
+    "version": "1.4.26f2",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:54Z"
+  },
+  {
+    "slug": "afterplace",
+    "title": "Afterplace",
+    "version": "1.2.22",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:58Z"
+  },
+  {
+    "slug": "against",
+    "title": "AGAINST",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:18:58Z"
+  },
+  {
+    "slug": "against-great-darkness",
+    "title": "Against Great Darkness",
+    "version": "1.59",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:01Z"
+  },
+  {
+    "slug": "against-the-storm",
+    "title": "Against the Storm",
+    "version": "1.10.4r &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:02Z"
+  },
+  {
+    "slug": "agarest-generations-of-war",
+    "title": "Agarest: Generations of War",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:04Z"
+  },
+  {
+    "slug": "agarest-generations-of-war-zero",
+    "title": "Agarest: Generations of War Zero",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:05Z"
+  },
+  {
+    "slug": "agatha-knife",
+    "title": "Agatha Knife",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:08Z"
+  },
+  {
+    "slug": "age-of-barbarian-extended-cut",
+    "title": "Age of Barbarian Extended Cut",
+    "version": "1.9.8",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:09Z"
+  },
+  {
+    "slug": "age-of-barbarians-chronicles",
+    "title": "Age of Barbarians Chronicles",
+    "version": "1.0.1.9",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:10Z"
+  },
+  {
+    "slug": "age-of-darkness-final-stand",
+    "title": "Age of Darkness: Final Stand",
+    "version": "1.0.2.5",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:13Z"
+  },
+  {
+    "slug": "age-of-defense",
+    "title": "Age of Defense",
+    "version": "1.19",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:14Z"
+  },
+  {
+    "slug": "age-of-empires-definitive-edition",
+    "title": "Age of Empires: Definitive Edition",
+    "version": "38862",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:19Z"
+  },
+  {
+    "slug": "age-of-empires-ii-2013",
+    "title": "Age of Empires II (2013)",
+    "version": "5.8 incl. all dlc&#039;s",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:16Z"
+  },
+  {
+    "slug": "age-of-empires-ii-definitive-edition",
+    "title": "Age of Empires II: Definitive Edition",
+    "version": "101.103.48086.0 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:17Z"
+  },
+  {
+    "slug": "age-of-empires-iii-definitive-edition",
+    "title": "Age of Empires III: Definitive Edition",
+    "version": "100.15.59076.0 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:18Z"
+  },
+  {
+    "slug": "age-of-empires-iv-anniversary-edition",
+    "title": "Age of Empires IV: Anniversary Edition",
+    "version": "16.3.11308.0 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:18Z"
+  },
+  {
+    "slug": "age-of-fear-total",
+    "title": "Age of Fear: Total",
+    "version": "11.0.5",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:21Z"
+  },
+  {
+    "slug": "age-of-gladiators-ii-rome",
+    "title": "Age of Gladiators II: Rome",
+    "version": "1.3.23",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:23Z"
+  },
+  {
+    "slug": "age-of-goblins",
+    "title": "Age of Goblins",
+    "version": "1.0.2",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:25Z"
+  },
+  {
+    "slug": "age-of-grit",
+    "title": "Age of Grit",
+    "version": "1.2",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:27Z"
+  },
+  {
+    "slug": "age-of-history-2-definitive-edition",
+    "title": "Age of History 2: Definitive Edition",
+    "version": "2026.06.14",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:28Z"
+  },
+  {
+    "slug": "age-of-history-3",
+    "title": "Age of History 3",
+    "version": "2026.08.02",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:30Z"
+  },
+  {
+    "slug": "age-of-jura",
+    "title": "Age of Jura",
+    "version": "1.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:32Z"
+  },
+  {
+    "slug": "age-of-mythology-extended-edition",
+    "title": "Age of Mythology: Extended Edition",
+    "version": "2.8.911",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:33Z"
+  },
+  {
+    "slug": "age-of-mythology-retold",
+    "title": "Age of Mythology: Retold",
+    "version": "100.19.16313.0 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:34Z"
+  },
+  {
+    "slug": "age-of-reforging-the-freelands",
+    "title": "Age of Reforging: The Freelands",
+    "version": "1.12c",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:35Z"
+  },
+  {
+    "slug": "age-of-rivals",
+    "title": "Age of Rivals",
+    "version": "3.16",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:39Z"
+  },
+  {
+    "slug": "age-of-warbots",
+    "title": "Age Of Warbots",
+    "version": "0.7.48",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:41Z"
+  },
+  {
+    "slug": "age-of-wonders-4",
+    "title": "Age of Wonders 4",
+    "version": "1.015.003.123307 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:42Z"
+  },
+  {
+    "slug": "age-of-wonders-iii",
+    "title": "Age Of Wonders III",
+    "version": "1.801 &amp; all dlc&#039;s",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:43Z"
+  },
+  {
+    "slug": "age-of-wonders-planetfall",
+    "title": "Age Of Wonders: Planetfall",
+    "version": "1.404.43820 &amp; dlc&#039;s",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:44Z"
+  },
+  {
+    "slug": "agefield-high-rock-the-school",
+    "title": "Agefield High: Rock the School",
+    "version": "2026.08.13",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:46Z"
+  },
+  {
+    "slug": "agent-64-spies-never-die",
+    "title": "Agent 64: Spies Never Die",
+    "version": "1042 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:46Z"
+  },
+  {
+    "slug": "agent-a-a-puzzle-in-disguise",
+    "title": "Agent A: A puzzle in disguise",
+    "version": "5.3.5",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:48Z"
+  },
+  {
+    "slug": "agents-of-mayhem",
+    "title": "Agents Of Mayhem",
+    "version": "1.0.6 incl. all dlc&#039;s",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:49Z"
+  },
+  {
+    "slug": "ages-of-conflict-world-war-simulator",
+    "title": "Ages of Conflict: World War Simulator",
+    "version": "4.5.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:50Z"
+  },
+  {
+    "slug": "ages-of-mages-the-last-keeper",
+    "title": "Ages of Mages: The Last Keeper",
+    "version": "1.0.1.2",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:53Z"
+  },
+  {
+    "slug": "aggelos",
+    "title": "Aggelos",
+    "version": "1.065",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:57Z"
+  },
+  {
+    "slug": "aggelos-2",
+    "title": "Aggelos 2",
+    "version": "1153",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:54Z"
+  },
+  {
+    "slug": "aggressor",
+    "title": "Aggressor",
+    "version": "1.1.8",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:19:59Z"
+  },
+  {
+    "slug": "agonize",
+    "title": "Agonize",
+    "version": "1.11",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:00Z"
+  },
+  {
+    "slug": "agony",
+    "title": "Agony",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:02Z"
+  },
+  {
+    "slug": "agrivore-incremental-farming",
+    "title": "Agrivore: Incremental Farming",
+    "version": "1.0.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:04Z"
+  },
+  {
+    "slug": "aground",
+    "title": "Aground",
+    "version": "2.1.2",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:05Z"
+  },
+  {
+    "slug": "aground-zero",
+    "title": "Aground Zero",
+    "version": "0.2.7",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:07Z"
+  },
+  {
+    "slug": "ai-art-impostor",
+    "title": "AI: Art Impostor",
+    "version": "0.16.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:15Z"
+  },
+  {
+    "slug": "ai-drone-simulator",
+    "title": "AI Drone Simulator",
+    "version": "1.39",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:08Z"
+  },
+  {
+    "slug": "ai-learns-to-drive",
+    "title": "AI Learns to Drive",
+    "version": "0.13.1",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:10Z"
+  },
+  {
+    "slug": "ai-limit",
+    "title": "AI LIMIT",
+    "version": "1.2.003 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:11Z"
+  },
+  {
+    "slug": "ai-roguelite",
+    "title": "AI Roguelite",
+    "version": "11.20 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:12Z"
+  },
+  {
+    "slug": "ai-the-somnium-files",
+    "title": "AI: The Somnium Files",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:15Z"
+  },
+  {
+    "slug": "ai-war-2",
+    "title": "AI War 2",
+    "version": "5.606 &amp; all dlc",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:13Z"
+  },
+  {
+    "slug": "aijin",
+    "title": "Aijin",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:19Z"
+  },
+  {
+    "slug": "aikagi",
+    "title": "AIKAGI",
+    "version": "1.0.0 &amp; r18",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:21Z"
+  },
+  {
+    "slug": "aikagura",
+    "title": "Aikagura",
+    "version": "1.7 &amp; r18",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:22Z"
+  },
+  {
+    "slug": "aila",
+    "title": "A.I.L.A",
+    "version": "1.0.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:15:55Z"
+  },
+  {
+    "slug": "ailia",
+    "title": "AiliA",
+    "version": "1.0.7",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:24Z"
+  },
+  {
+    "slug": "ailment",
+    "title": "Ailment",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:26Z"
+  },
+  {
+    "slug": "ailuri",
+    "title": "Ailuri",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:28Z"
+  },
+  {
+    "slug": "aim-climb",
+    "title": "Aim Climb",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:29Z"
+  },
+  {
+    "slug": "aim-expert",
+    "title": "Aim Expert",
+    "version": "2024.04.12",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:31Z"
+  },
+  {
+    "slug": "aim-hero",
+    "title": "Aim Hero",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:33Z"
+  },
+  {
+    "slug": "aimbeast",
+    "title": "Aimbeast",
+    "version": "4.2.0.2",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:34Z"
+  },
+  {
+    "slug": "air-conflicts-secret-wars",
+    "title": "Air Conflicts: Secret Wars",
+    "version": "1.01",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:35Z"
+  },
+  {
+    "slug": "air-defender",
+    "title": "Air Defender",
+    "version": "0.7.0.0",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:36Z"
+  },
+  {
+    "slug": "air-marty",
+    "title": "Air Marty",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:41Z"
+  },
+  {
+    "slug": "air-traffic-greenlight",
+    "title": "Air Traffic: Greenlight",
+    "version": "2.14.5",
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:42Z"
+  },
+  {
+    "slug": "air-twister",
+    "title": "Air Twister",
+    "version": null,
+    "source": "steamunlocked",
+    "publishedAt": "2026-09-12T21:20:43Z"
+  },
+  {
     "slug": "be-a-maid-in-the-demon-world-the-secret-café-of-the-demon-angel-hero",
     "title": "~Be a maid in the Demon World~ The Secret Café of the Demon Angel Hero.",
     "version": null,
