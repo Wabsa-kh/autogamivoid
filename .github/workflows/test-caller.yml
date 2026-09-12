@@ -1,0 +1,10 @@
+name: Test caller
+
+on:
+  workflow_dispatch:
+
+jobs:
+  t:
+    uses: ./.github/workflows/autogamivoid-run.yml
+    with:
+      action: catalog
