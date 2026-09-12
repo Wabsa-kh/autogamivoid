@@ -15,9 +15,6 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: write
-
 concurrency:
   group: autogamivoid-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
