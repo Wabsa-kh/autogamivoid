@@ -11,6 +11,9 @@ pub struct EnrichmentInput {
     pub steam_app_id: Option<u64>,
     /// Steam storefront base for appdetails/storesearch (tests point this at a mock).
     pub steam_store_api: Option<String>,
+    /// HEAD-verify image URLs against Steam's CDN before publishing so no
+    /// listing ships a dead image. Disable in offline tests.
+    pub verify_images: bool,
 }
 
 /// Enrich a matched game with Steam store data and SteamDB-style image URLs.
@@ -39,7 +42,7 @@ pub fn build_enriched(game: &EnrichmentInput) -> anyhow::Result<EnrichedGame> {
                 warn!("Steam details unavailable for app {app_id}; using fallbacks");
             }
             let details = details.unwrap_or_default();
-            let images = images_from_steam(app_id, &details);
+            let images = images_from_steam(app_id, &details, game.verify_images);
             (details, images)
         }
         None => {
@@ -108,6 +111,7 @@ struct SteamDetails {
     release_date: Option<String>,
     platforms: Option<Vec<String>>,
     tags: Vec<String>,
+    screenshots: Vec<String>,
 }
 
 #[derive(Default)]
@@ -243,6 +247,20 @@ fn fetch_steam_details(app_id: u64, api_base: &str) -> Option<SteamDetails> {
         .unwrap_or_default();
     tags.extend(genres);
 
+    // Full-resolution screenshots (path_full is the 1920px variant), capped.
+    let screenshots: Vec<String> = data
+        .get("screenshots")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|s| s.get("path_full"))
+                .filter_map(|p| p.as_str())
+                .map(str::to_string)
+                .take(6)
+                .collect()
+        })
+        .unwrap_or_default();
+
     Some(SteamDetails {
         description,
         developer: developers.first().cloned(),
@@ -250,24 +268,80 @@ fn fetch_steam_details(app_id: u64, api_base: &str) -> Option<SteamDetails> {
         release_date,
         platforms: (!platforms.is_empty()).then_some(platforms),
         tags,
+        screenshots,
     })
 }
 
-fn images_from_steam(app_id: u64, _details: &SteamDetails) -> ImageSet {
-    // Steam CDN URLs are the canonical public image URLs (SteamDB serves the same
-    // CDN assets). header.jpg is the cover; library_hero is the wide hero image.
+/// Build the image set for an app from Steam's CDN, with size-appropriate
+/// candidates and fallbacks:
+///
+/// - **Cover** (2:1 card): `header.jpg` 460x215, fallback `capsule_616x353.jpg`.
+/// - **Hero** (wide banner): `library_hero.jpg` 3840x1240, fallback to the cover.
+/// - **Screenshots**: up to 6 full-resolution (1920px) images from appdetails.
+///
+/// When `verify` is true every URL is HEAD-checked against the CDN first, so
+/// games without a hero asset (older/smaller apps) fall back instead of
+/// publishing a broken image.
+fn images_from_steam(app_id: u64, details: &SteamDetails, verify: bool) -> ImageSet {
     let base = format!("https://cdn.cloudflare.steamstatic.com/steam/apps/{app_id}");
-    let cover = format!("{base}/header.jpg");
-    let hero = format!("{base}/library_hero.jpg");
+    let cover_candidates = [
+        format!("{base}/header.jpg"),
+        format!("{base}/capsule_616x353.jpg"),
+    ];
+    let hero_candidates = [
+        format!("{base}/library_hero.jpg"),
+        cover_candidates[0].clone(),
+    ];
+    let screenshot_candidates: Vec<String> = details.screenshots.iter().take(6).cloned().collect();
 
-    // Screenshot paths could come from appdetails; the CDN default set is
-    // sufficient for listing previews.
-    let screenshots: Vec<String> = Vec::new();
+    if !verify {
+        return ImageSet {
+            cover: Some(cover_candidates[0].clone()),
+            hero: Some(hero_candidates[0].clone()),
+            screenshots: screenshot_candidates,
+        };
+    }
+
+    let cover = cover_candidates.iter().find(|u| url_exists(u.as_str())).cloned();
+    let hero = hero_candidates
+        .iter()
+        .find(|u| url_exists(u.as_str()))
+        .cloned()
+        .or_else(|| cover.clone());
+    let screenshots: Vec<String> = screenshot_candidates
+        .into_iter()
+        .filter(|u| url_exists(u))
+        .collect();
 
     ImageSet {
-        cover: Some(cover),
-        hero: Some(hero),
+        cover,
+        hero,
         screenshots,
+    }
+}
+
+/// HEAD-check an image URL on Steam's CDN (short timeout, dedicated thread so
+/// the sync helper stays callable from the async workflow).
+fn url_exists(url: &str) -> bool {
+    let url = url.to_string();
+    let spawned = std::thread::Builder::new()
+        .name("img-head".into())
+        .spawn(move || {
+            let Ok(client) = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(5))
+                .build()
+            else {
+                return false;
+            };
+            client
+                .head(&url)
+                .send()
+                .map(|r| r.status().is_success())
+                .unwrap_or(false)
+        });
+    match spawned {
+        Ok(handle) => handle.join().unwrap_or(false),
+        Err(_) => false,
     }
 }
 
@@ -381,6 +455,8 @@ mod tests {
             steam_app_id: None,
             // Dead local address keeps these tests offline-deterministic.
             steam_store_api: Some("http://127.0.0.1:1".into()),
+            // Offline: no HEAD verification against the real CDN.
+            verify_images: false,
         }
     }
 

@@ -158,6 +158,8 @@ async fn enrich_game(game: &crate::models::MatchedGame, config: &Config) -> Opti
         candidates,
         steam_app_id: None,
         steam_store_api: config.steam_store_api.clone(),
+        // HEAD-verify images against Steam's CDN so no listing ships a dead URL.
+        verify_images: true,
     }) {
         Ok(e) => Some(e),
         Err(e) => {
