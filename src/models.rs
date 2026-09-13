@@ -53,6 +53,44 @@ pub struct DownloadCandidate {
     pub notes: Option<String>,
 }
 
+/// Details scraped from a single game page on a source site: the page the
+/// listing crawl only links to. Carries the *actual* file host download link
+/// (UploadHaven, MegaDB, ...), the real archive size, version marker,
+/// developer/publisher and requirements the listing pages never show.
+///
+/// Deliberately carries NO images: all artwork must come from Steam's CDN.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct SourcePageDetails {
+    /// Direct download URLs found on the page (first = primary).
+    pub download_urls: Vec<String>,
+    /// Main download host name, e.g. "UploadHaven" or "MegaDB".
+    pub download_host: Option<String>,
+    /// Version marker from the page ("v1.15 | Full Version").
+    pub version: Option<String>,
+    /// Archive size ("28.11 GB", "2.8 GB").
+    pub file_size: Option<String>,
+    pub developer: Option<String>,
+    pub publisher: Option<String>,
+    /// Genre chips from the page header ("Simulation").
+    pub genres: Vec<String>,
+    /// System requirements (OS/Memory/Graphics/Storage) as plain text.
+    pub minimum: Option<String>,
+    /// Page title without site suffix (better title than the listing anchor).
+    pub title: Option<String>,
+}
+
+impl SourcePageDetails {
+    pub fn is_empty(&self) -> bool {
+        self.download_urls.is_empty()
+            && self.version.is_none()
+            && self.file_size.is_none()
+            && self.developer.is_none()
+            && self.publisher.is_none()
+            && self.genres.is_empty()
+            && self.minimum.is_none()
+    }
+}
+
 /// One entry of the API guide's `downloadLinks` array.
 #[derive(Clone, Debug, Serialize)]
 pub struct DownloadLink {
@@ -74,6 +112,9 @@ pub struct DownloadLink {
 #[derive(Clone, Debug)]
 pub struct EnrichedGame {
     pub raw_title: String,
+    /// Display title sent as the listing's `title` field: the cleaned game
+    /// name plus the "Free Download" keyword (e.g. "Doom Free Download").
+    pub listing_title: String,
     pub description: String,
     pub article_md: String,
     pub developer: Option<String>,
@@ -115,6 +156,8 @@ pub struct EnrichedGame {
 #[serde(rename_all = "camelCase")]
 pub struct GamivoidGamePatch {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_size: Option<String>,
@@ -144,6 +187,22 @@ pub struct GamivoidGamePatch {
     pub category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub developer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publisher: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cover_image: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cover_alt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hero_image: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screenshots: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screenshot_alts: Option<Vec<String>>,
 }
 
 /// Create response envelope per the guide: `{ "game": { ... } }` (HTTP 201).

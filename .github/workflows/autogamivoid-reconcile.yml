@@ -14,6 +14,10 @@ on:
         description: 'Max backfills this run (re-run to continue)'
         required: false
         default: '300'
+      publish_mode:
+        description: 'draft (backfill only) or publish (backfill AND publish complete drafts)'
+        required: false
+        default: 'publish'
 
 permissions:
   contents: write
@@ -24,5 +28,5 @@ jobs:
     with:
       action: reconcile
       action_limit: ${{ inputs.action_limit }}
-      publish_mode: draft
+      publish_mode: ${{ inputs.publish_mode }}
     secrets: inherit

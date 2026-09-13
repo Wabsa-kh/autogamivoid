@@ -23,12 +23,12 @@ fn main() -> Result<()> {
             "--dry-run" => dry_run_override = true,
             "--action" => {
                 let value = args.next().ok_or_else(|| {
-                    anyhow::anyhow!("--action requires sync|catalog|updates|reconcile")
+                    anyhow::anyhow!("--action requires sync|catalog|updates|reconcile|reset")
                 })?;
                 action = Some(
                     RunAction::parse(&value).ok_or_else(|| {
                         anyhow::anyhow!(
-                            "unknown action '{value}' (use sync|catalog|updates|reconcile)"
+                            "unknown action '{value}' (use sync|catalog|updates|reconcile|reset)"
                         )
                     })?,
                 );

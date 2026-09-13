@@ -1,5 +1,5 @@
 use crate::config::SourceEndpoint;
-use crate::models::{SourceGame, SourceLabel};
+use crate::models::{SourceGame, SourceLabel, SourcePageDetails};
 use reqwest::Client;
 use std::time::Duration;
 use tracing::{info, warn};
@@ -18,6 +18,405 @@ pub const LETTER_PATHS: [&str; 27] = [
 
 /// Hard bound on pages followed per letter so a markup change can't loop.
 const MAX_PAGES_PER_LETTER: usize = 60;
+
+// ---------------------------------------------------------------------------
+// Game-page deep scrape — the actual download link + real metadata
+// ---------------------------------------------------------------------------
+
+/// Fetch one game page and extract what the listing anchors never show:
+///
+/// - the *actual* download link (SteamUnlocked: `su-dl-primary` anchor to
+///   uploadhaven.com; Steamrip: file-host anchor inside the entry content,
+///   e.g. megadb.net) — the "click the button and get the real link" fix;
+/// - the archive size ("Download(28.11 GB)" / "Game Size: 2.8 GB"),
+/// - the version marker ("v1.15 | Full Version"),
+/// - developer / publisher / genre chips, system requirements.
+///
+/// No images are extracted: all artwork must come from Steam's CDN.
+///
+/// Anything that fails to parse simply stays None/empty: the caller falls
+/// back to listing-level data.
+pub async fn scrape_game_page(
+    cfg: &SourceEndpoint,
+    label: SourceLabel,
+    page_url: &str,
+) -> anyhow::Result<SourcePageDetails> {
+    if cfg.base_url.is_empty() {
+        anyhow::bail!("{} base_url is not configured", label);
+    }
+    let client = http_client()?;
+    let html = fetch_text(&client, cfg, page_url).await?;
+    Ok(extract_page_details(&html, label, page_url))
+}
+
+/// Parse a fetched game page into SourcePageDetails (images excluded on
+/// purpose: artwork must come from Steam's CDN, never the source sites).
+pub fn extract_page_details(html: &str, label: SourceLabel, _page_url: &str) -> SourcePageDetails {
+    let flat = html.replace('\n', " ");
+
+    let mut details = SourcePageDetails {
+        download_urls: extract_download_urls(&flat, &label),
+        download_host: None,
+        version: extract_page_version(&flat),
+        file_size: extract_file_size(&flat),
+        developer: extract_meta_field(&flat, &["Developer:", "Developer"]),
+        publisher: extract_meta_field(&flat, &["Publisher:", "Publisher"]),
+        genres: extract_genres(&flat, &label),
+        minimum: extract_requirements(&flat),
+        title: extract_page_title(&flat),
+    };
+
+    // The host name comes from the first extracted download URL.
+    if let Some(first) = details.download_urls.first() {
+        details.download_host = host_label(first);
+    }
+    details
+}
+
+/// Known file hosts the two sites hand out. Order matters for display only.
+const FILE_HOSTS: [&str; 16] = [
+    "uploadhaven.com",
+    "megadb.net",
+    "gofile.io",
+    "buzzheavier.com",
+    "1fitchier.com",
+    "1fichier.com",
+    "datanodes.to",
+    "usersdrive.com",
+    "bowfile.com",
+    "multiup.io",
+    "multiup.org",
+    "krakenfiles.com",
+    "pixeldrain.com",
+    "mega.nz",
+    "qdembed.com",
+    "send.cm",
+];
+
+fn host_label(url: &str) -> Option<String> {
+    for host in FILE_HOSTS {
+        if url.contains(host) {
+            let name = host.split('.').next()?;
+            let mut c = name.chars();
+            return Some(
+                c.next()?.to_uppercase().collect::<String>() + c.as_str(),
+            );
+        }
+    }
+    None
+}
+
+/// Pull download URLs out of a game page:
+/// - SteamUnlocked: the primary button anchor (`su-dl-primary`, or any
+///   uploadhaven.com/download/... href);
+/// - Steamrip: anchors to known file hosts inside the entry content.
+fn extract_download_urls(flat: &str, label: &SourceLabel) -> Vec<String> {
+    let mut urls: Vec<String> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    fn push_url(urls: &mut Vec<String>, seen: &mut std::collections::HashSet<String>, url: &str) {
+        let url = url.trim().to_string();
+        if url.starts_with("https://")
+            || url.starts_with("http://")
+            || url.starts_with("//")
+        {
+            let absolute = if let Some(rest) = url.strip_prefix("//") {
+                format!("https://{rest}")
+            } else {
+                url
+            };
+            if seen.insert(absolute.clone()) {
+                urls.push(absolute);
+            }
+        }
+    }
+
+    // Primary download button (SteamUnlocked renders `class="su-dl-primary"`).
+    if let Some(idx) = flat.find("su-dl-primary") {
+        let window = &flat[idx..(idx + 600).min(flat.len())];
+        if let Some(href) = extract_href(window) {
+            push_url(&mut urls, &mut seen, &href);
+        }
+    }
+
+    // Any anchor pointing at a known file host (both sites). Site pages of
+    // those hosts (register/login/premium/...) are never download links.
+    for (href, _) in iter_anchor_tags(flat) {
+        let lower = href.to_lowercase();
+        if FILE_HOSTS.iter().any(|h| lower.contains(h)) && !is_host_navigation_url(&lower) {
+            push_url(&mut urls, &mut seen, href);
+        }
+    }
+
+    // Generic anchors literally named download (Steamrip fallbacks like
+    // "DOWNLOAD HERE" pointing at an unknown host).
+    if urls.is_empty() {
+        for (href, text) in iter_anchor_tags(flat) {
+            let t = text.to_lowercase();
+            if (t.contains("download") || t.contains("get game")) && !href.contains('#') {
+                let lower = href.to_lowercase();
+                let on_site = lower.contains("steamrip.com")
+                    || lower.contains("steamunlocked");
+                if !on_site {
+                    push_url(&mut urls, &mut seen, href);
+                }
+            }
+        }
+    }
+
+    let _ = label;
+    urls
+}
+
+/// True for file-host pages that are NOT download endpoints (registration,
+/// login, premium upsells, legal pages). These anchor every file-host site
+/// and must never be listed as download mirrors.
+fn is_host_navigation_url(lower_url: &str) -> bool {
+    const NAV_SEGMENTS: [&str; 14] = [
+        "/account", "/register", "/login", "/signin", "/signup", "/premium", "/upgrade",
+        "/support", "/faq", "/dmca", "/contact", "/report", "/privacy", "/terms",
+    ];
+    NAV_SEGMENTS.iter().any(|seg| lower_url.contains(seg))
+}
+
+/// Extract the href="..." value from an HTML fragment.
+fn extract_href(fragment: &str) -> Option<String> {
+    let idx = fragment.find("href=")?;
+    let rest = &fragment[idx + 5..];
+    leading_quoted_value(rest)
+}
+
+/// Read the quoted string at the start of a fragment: `"https://.."` ->
+/// `https://..`.
+fn leading_quoted_value(fragment: &str) -> Option<String> {
+    let rest = fragment.trim_start();
+    let quote = rest.chars().next()?;
+    if quote != '"' && quote != '\'' {
+        return None;
+    }
+    let end = rest[1..].find(quote)? + 1;
+    Some(rest[1..end].to_string())
+}
+
+/// Version marker on the game page: "v1.15 | Full Version" (Steamrip meta
+/// list) or the "(v1.4)" suffix already in the page title.
+fn extract_page_version(flat: &str) -> Option<String> {
+    if let Some(pos) = flat.find(">Version<") {
+        let window = &flat[pos..(pos + 300).min(flat.len())];
+        if let Some(end) = window.find("</li>") {
+            if let Some(v) = version_from_scraped_text(&strip_tags(&window[..end])) {
+                return Some(v);
+            }
+        }
+    }
+    if let Some(title) = extract_page_title(flat) {
+        if let Some(v) = version_from_title(&title) {
+            return Some(v);
+        }
+    }
+    None
+}
+
+/// Pull a bare version like "1.15" out of scraped text such as
+/// "Version: v1.15 | Full Version" or "Version: v1.15".
+fn version_from_scraped_text(raw: &str) -> Option<String> {
+    let after_label = raw.trim().trim_start_matches('>').trim();
+    let cleaned = match after_label.split_once(':') {
+        Some((_, value)) => value.trim(),
+        None => after_label,
+    };
+    let head = cleaned.split('|').next().unwrap_or(cleaned).trim();
+    let digits: String = head
+        .chars()
+        .skip_while(|c| !c.is_ascii_digit())
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    if digits.is_empty() {
+        None
+    } else {
+        Some(digits)
+    }
+}
+
+/// Archive size: SteamUnlocked hero chip `su-hchip--size">28.11 GB` or the
+/// button text "Download(28.11 GB)"; Steamrip "Game Size: </strong>2.8 GB".
+fn extract_file_size(flat: &str) -> Option<String> {
+    for marker in ["su-hchip--size\">", "Game Size: </strong>"] {
+        if let Some(idx) = flat.find(marker) {
+            let start = idx + marker.len();
+            let window = &flat[start..(start + 60).min(flat.len())];
+            let end = window.find('<').unwrap_or(window.len());
+            let raw = window[..end].trim();
+            if looks_like_size(raw) {
+                return Some(raw.to_string());
+            }
+        }
+    }
+    // JSON-LD fileSize field.
+    if let Some(idx) = flat.find("\"fileSize\":") {
+        let window = &flat[idx..(idx + 80).min(flat.len())];
+        let inner: String = window.chars().skip("\"fileSize\":".len()).collect();
+        let inner = inner.trim_start();
+        if let Some(rest) = inner.strip_prefix('"') {
+            if let Some(end) = rest.find('"') {
+                let raw = rest[..end].trim();
+                if looks_like_size(raw) {
+                    return Some(raw.to_string());
+                }
+            }
+        }
+    }
+    // Button text "Download(28.11 GB)".
+    if let Some(idx) = flat.find("Download(") {
+        let window = &flat[idx..(idx + 60).min(flat.len())];
+        if let Some(close) = window.find(')') {
+            let raw = window["Download(".len()..close].trim();
+            if looks_like_size(raw) {
+                return Some(raw.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn looks_like_size(s: &str) -> bool {
+    let lower = s.to_lowercase();
+    (lower.contains("gb") || lower.contains("mb") || lower.contains("kb"))
+        && lower
+            .chars()
+            .any(|c| c.is_ascii_digit())
+        && lower.len() <= 20
+}
+
+/// "Developer:</strong> Andrew Katz, Jeremy Collette" style fields from the
+/// Steamrip meta list. Tolerates "Developer" (no colon) too.
+fn extract_meta_field(flat: &str, labels: &[&str]) -> Option<String> {
+    for label in labels {
+        let needle = format!(">{label}");
+        let Some(idx) = flat.find(&needle) else { continue };
+        let window = &flat[idx..(idx + 300).min(flat.len())];
+        let Some(end) = window.find("</li>").or_else(|| window.find("</p>")) else {
+            continue;
+        };
+        let raw = strip_tags(&window[..end]);
+        // " >Developer: Andrew Katz " -> "Andrew Katz" (the leading '>' is
+        // the tail of the enclosing <strong>/<li> tag).
+        let raw = raw
+            .trim()
+            .trim_start_matches('>')
+            .trim()
+            .split_once(':')
+            .map(|(_, value)| value.trim())
+            .unwrap_or("");
+        let raw = raw.split('|').next().unwrap_or(raw).trim();
+        if !raw.is_empty() && raw.chars().count() <= 150 {
+            return Some(raw.to_string());
+        }
+    }
+    None
+}
+
+/// Genre chips: SteamUnlocked `su-hchip--genre">Simulation`; Steamrip
+/// "Genre:</strong> Action" meta entry.
+fn extract_genres(flat: &str, label: &SourceLabel) -> Vec<String> {
+    let mut genres = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    let mut push = |raw: &str| {
+        let raw = raw.trim();
+        if !raw.is_empty() && raw.chars().count() <= 60 && seen.insert(raw.to_lowercase()) {
+            genres.push(raw.to_string());
+        }
+    };
+
+    if *label == SourceLabel::Steamunlocked {
+        for part in flat.split("su-hchip--genre\">") {
+            if part.is_empty() {
+                continue;
+            }
+            let end = part.find('<').unwrap_or(part.len());
+            let value = decode_entities(&part[..end]);
+            if !value.contains("games") && !value.contains("http") {
+                push(&value);
+            }
+            // Only chips before the page body (avoid capturing article text).
+            if flat.find(part).map(|p| p > 4000).unwrap_or(true) {
+                break;
+            }
+        }
+    } else {
+        if let Some(field) = extract_meta_field(flat, &["Genre:", "Genre"]) {
+            for g in field.split(',') {
+                push(g);
+            }
+        }
+    }
+    genres
+}
+
+/// System requirements list: "<strong>OS</strong>: ..." entries (Steamrip),
+/// or the "System Requirements" section list (SteamUnlocked).
+fn extract_requirements(flat: &str) -> Option<String> {
+    let window_start = flat
+        .find("System Requirements")
+        .or_else(|| flat.find("<strong>OS"))
+        .or_else(|| flat.find("<strong>OS</strong>"))?;
+    let window = &flat[window_start..(window_start + 3500).min(flat.len())];
+    let end = window.find("</ul>").or_else(|| window.find("</ol>"))?;
+    let list_html = &window[..end];
+
+    let mut lines = Vec::new();
+    for li in list_html.split("<li>") {
+        let Some(rest) = li.split_once("</li>") else { continue };
+        let text = decode_entities(&strip_tags(rest.0));
+        let text = text.trim();
+        if text.is_empty() {
+            continue;
+        }
+        lines.push(text.to_string());
+    }
+    let text = lines.join("\n");
+    if text.chars().count() >= 10 {
+        Some(text)
+    } else {
+        None
+    }
+}
+
+/// Strip tags conservatively: remove <strong>/<em>/<span>/<a> wrappers and
+/// any remaining <...> fragments.
+fn strip_tags(html: &str) -> String {
+    let mut out = String::with_capacity(html.len());
+    let mut rest = html;
+    while let Some(open) = rest.find('<') {
+        out.push_str(&rest[..open]);
+        let after = &rest[open..];
+        match after.find('>') {
+            Some(close) => rest = &after[close + 1..],
+            None => break,
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// <title> without the site suffix ("Blackthorn Arena: Reforged Free Download").
+fn extract_page_title(flat: &str) -> Option<String> {
+    let start = flat.find("<title>")? + 7;
+    let end = flat[start..].find("</title>")? + start;
+    // Decode entities FIRST (&raquo; -> ») so the suffix split always hits.
+    let raw = decode_entities(&strip_tags(&flat[start..end]));
+    let mut cleaned = raw.clone();
+    for marker in ["\u{00bb} SteamRIP", "\u{00bb} SteamUnlocked"] {
+        if let Some(idx) = cleaned.find(marker) {
+            cleaned = cleaned[..idx].trim().to_string();
+        }
+    }
+    let cleaned = cleaned.trim().to_string();
+    if cleaned.len() < 2 {
+        return None;
+    }
+    Some(cleaned)
+}
 
 // ---------------------------------------------------------------------------
 // Freshness scrape (homepage / listing page) — used by the update-check run.
@@ -469,6 +868,12 @@ pub fn decode_entities(text: &str) -> String {
             } else if let Some(r) = rest.strip_prefix("&nbsp;") {
                 let _ = r;
                 Some((' ', 6))
+            } else if let Some(r) = rest.strip_prefix("&raquo;") {
+                let _ = r;
+                Some(('»', 7))
+            } else if let Some(r) = rest.strip_prefix("&laquo;") {
+                let _ = r;
+                Some(('«', 7))
             } else if let Some(r) = rest.strip_prefix("&eacute;") {
                 let _ = r;
                 Some(('é', 8))
@@ -528,6 +933,19 @@ mod tests {
         let (title, version) = clean_listing_title("Half-Life 2 Free Download");
         assert_eq!(title, "Half-Life 2");
         assert_eq!(version, None);
+    }
+
+    #[test]
+    fn filehost_navigation_pages_are_not_downloads() {
+        let html = r#"
+            <a class="su-dl-primary" href="https://uploadhaven.com/download/abc123">Download</a>
+            <a href="https://uploadhaven.com/account/register">Register</a>
+            <a href="https://megadb.net/login">Login</a>
+            <a href="https://megadb.net/dmca">DMCA</a>
+        "#;
+        let flat = html.replace('\n', " ");
+        let urls = extract_download_urls(&flat, &SourceLabel::Steamunlocked);
+        assert_eq!(urls, vec!["https://uploadhaven.com/download/abc123".to_string()]);
     }
 
     #[test]

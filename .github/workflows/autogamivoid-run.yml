@@ -21,7 +21,7 @@ on:
         description: 'draft (create unpublished for review) or publish (direct publish when all gates pass)'
         required: false
         type: string
-        default: 'draft'
+        default: 'publish'
       dry_run:
         description: 'Validate without writing to gamivoid'
         required: false
@@ -59,7 +59,7 @@ jobs:
               "gamivoid_api_base": os.environ.get("GAMIVOID_API_BASE") or "https://gamivoid.site",
               "gamivoid_publishing_key": key,
               "steam_api_key": os.environ.get("STEAM_WEB_API_KEY") or None,
-              "publish_mode": os.environ.get("AUTOGAMIVOID_PUBLISH_MODE") or "draft",
+              "publish_mode": os.environ.get("AUTOGAMIVOID_PUBLISH_MODE") or "publish",
               "sources": {
                   "steamrip": {
                       "base_url": os.environ.get("STEAMRIP_BASE_URL") or "https://steamrip.com",

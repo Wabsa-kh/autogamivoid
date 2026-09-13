@@ -148,6 +148,7 @@ record but writes nothing. Force dry-run on any config with `--dry-run`.
 | `autogamivoid-updates.yml` | `0 5 * * *` | Re-check published games for updates |
 | `autogamivoid.yml` | `0 3 * * 0` | Fresh-listing sync (new + changed) |
 | `autogamivoid-reconcile.yml` | manual | Heal state from the site, backfill incomplete drafts |
+| `autogamivoid-reset.yml` | manual | DESTRUCTIVE: delete ALL listings, clear state, optionally relist from zero |
 
 Each workflow commits updated `state.json` / `published-games.json` back to the
 repo, which is what makes the next run resume and skip unchanged games.
@@ -157,10 +158,53 @@ repo, which is what makes the next run resume and skip unchanged games.
 `publish_mode` in the config (or the workflow input) controls what happens when
 a listing passes every publish gate:
 
-- `draft` (default): every listing is created with `published: false`. Review
+- `draft`: every listing is created with `published: false`. Review
   in the dashboard, then flip them live there, or switch the mode.
-- `publish`: complete listings go live immediately; anything missing required
-  data stays a draft.
+- `publish` (**default** in the workflows and config.example.json): complete
+  listings go live immediately; anything missing required data stays a draft.
+
+### Direct download links (the real file-host URL)
+
+After the A-Z crawl picks a game, the runner fetches that game's own page on
+the source site and extracts what listing pages never show:
+
+- **The actual download link** — SteamUnlocked's primary button
+  (`su-dl-primary`, an uploadhaven.com URL) or Steamrip's file-host anchor
+  (MegaDB, Gofile, ...). This is the first `downloadLinks` entry, so the
+  site's download button leads straight to the file host instead of
+  re-linking the source listing.
+- **Real file size** ("28.11 GB") from the hero chip / "Game Size" meta /
+  JSON-LD `fileSize`.
+- **Version marker** ("v1.15 | Full Version") when the listing title has none.
+- **Developer / publisher / genre** from the page's meta list.
+- **System requirements** (OS/Processor/Memory/Graphics/Storage) so games
+  Steam cannot resolve still get complete listing data.
+
+**Images are Steam-only.** Cover, hero, featured and screenshot URLs are
+always Steam CDN assets (`cdn.cloudflare.steamstatic.com`); nothing is ever
+hotlinked from Steamrip or SteamUnlocked (the publishing guide forbids
+hotlinking artwork without permission). A game whose Steam entry cannot be
+resolved therefore has no images and stays a **draft** instead of publishing
+with source-site artwork — run reconcile again later; it will publish once
+Steam resolves.
+
+### Listing conventions
+
+- **Title & slug** carry the "Free Download" keyword: "Doom Free Download"
+  with slug `doom-free-download` (matching the search intent of the site's
+  audience and the source sites' own URL pattern).
+- **Download links are file-host links only** — the exact URL behind the
+  source page's download button (UploadHaven, MegaDB, ...). The Steam store
+  page and the source listing pages never appear as links, and no label,
+  note, article, license text or alt text ever mentions where the game was
+  collected from.
+- **Everything is filled.** Missing values get clean placeholders ("Latest"
+  version, "10 GB available space" storage, a generic requirements block,
+  "Not specified" rows in the details table), so no published page shows an
+  empty field.
+- **Requirements are formatted** one "Label: value" per line (OS / Processor
+  / Memory / Graphics / DirectX / Storage), re-split from the glued run-on
+  paragraphs the source pages use.
 
 ### The reconcile action
 
@@ -173,6 +217,26 @@ a listing passes every publish gate:
    requirements, download links, SEO fields), `action_limit` per run.
 
 Run it once after enabling the key, or any time state and site disagree.
+
+### The reset action (delete everything and relist from zero)
+
+`--action reset` (or the `autogamivoid-reset.yml` workflow) is the nuclear
+option. It deletes **every** listing on the site — drafts and published — and
+wipes `state.json`, so the next catalog run relists everything from zero with
+current code and data. Use it when existing listings are stale or incomplete
+and you want a clean relaunch rather than incremental patches:
+
+1. Lists every owner listing (drafts included).
+2. Deletes each one (`DELETE /api/admin/games/{slug}`); comments and bookmarks
+   go with them (uploaded R2 images are not removed).
+3. Clears `state.json` and rewrites the manifest as empty.
+4. With the workflow's `relist` box ticked (default), the catalog run starts
+   immediately after and republishes everything with real download links and
+   Steam CDN images.
+
+The workflow requires typing **RESET** into the `confirm` input before it
+runs. The catalog action respects `action_limit`, so a large site relists over
+several scheduled runs until done.
 
 ## Safety model
 

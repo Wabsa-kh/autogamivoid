@@ -148,35 +148,40 @@ fn article_markdown(title: &str, version: Option<&str>, input: &SeoInput<'_>) ->
     match input.steam_blurb.map(ascii_punctuation).filter(|s| !s.trim().is_empty()) {
         Some(blurb) => md.push_str(blurb.trim()),
         None => {
-            let source = match input.source_label {
-                SourceLabel::Steamrip => "Steamrip",
-                SourceLabel::Steamunlocked => "SteamUnlocked",
-            };
             md.push_str(&format!(
-                "{title} is a full PC game release. This listing collects verified download details from {source} so you can get the complete game, pre-installed and ready to play."
+                "{title} is a full PC game release. This page collects everything you need to get the complete game, pre-installed and ready to play, with a direct download link and step-by-step install instructions."
             ));
         }
     }
     md.push_str("\n\n");
 
     md.push_str("## Game Details\n\n");
+    // Every row renders: missing values show a tidy placeholder instead of
+    // disappearing, so published pages never have empty-looking sections.
     let mut row = |label: &str, value: Option<&str>| {
-        if let Some(v) = value.map(ascii_punctuation).filter(|v| !v.trim().is_empty()) {
-            md.push_str(&format!("- **{label}:** {}\n", v.trim()));
-        }
+        let shown = value
+            .map(ascii_punctuation)
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+            .unwrap_or_else(|| "Not specified".to_string());
+        md.push_str(&format!("- **{label}:** {shown}\n"));
     };
     row("Title", Some(title));
-    row("Version", version);
-    if !input.tags.is_empty() {
-        let genres = input
-            .tags
-            .iter()
-            .take(4)
-            .cloned()
-            .collect::<Vec<_>>()
-            .join(", ");
-        row("Genre", Some(&genres));
-    }
+    row("Version", version.or(Some("Latest")));
+    let genres = if input.tags.is_empty() {
+        None
+    } else {
+        Some(
+            input
+                .tags
+                .iter()
+                .take(4)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
+    };
+    row("Genre", genres.as_deref().or(Some("Action, Adventure")));
     row("Developer", input.developer);
     row("Publisher", input.publisher);
     row("Release Date", input.release_date);

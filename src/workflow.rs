@@ -25,6 +25,9 @@ pub enum RunAction {
     /// actually exists (heals phantoms from old dry-runs, recovers the drafts
     /// created by pre-guide runs).
     Reconcile,
+    /// DESTRUCTIVE: delete every listing on the site and clear state.json so
+    /// the next catalog run relists everything from zero with current code.
+    Reset,
 }
 
 impl RunAction {
@@ -34,6 +37,7 @@ impl RunAction {
             "catalog" => Some(RunAction::Catalog),
             "updates" => Some(RunAction::Updates),
             "reconcile" => Some(RunAction::Reconcile),
+            "reset" => Some(RunAction::Reset),
             _ => None,
         }
     }
@@ -50,6 +54,7 @@ pub async fn run_action(config: Config, action: RunAction) -> anyhow::Result<Run
         RunAction::Catalog => run_catalog(config).await,
         RunAction::Updates => run_updates(config).await,
         RunAction::Reconcile => run_reconcile(config).await,
+        RunAction::Reset => run_reset(config).await,
     }
 }
 
@@ -151,6 +156,10 @@ async fn enrich_game(game: &crate::models::MatchedGame, config: &Config) -> Opti
         .map(Into::into)
         .collect();
 
+    // Deep-scrape the chosen source's game page: this is where the real
+    // download link (file host), archive size, version and requirements live.
+    let page_details = fetch_page_details(&config.sources, &best).await;
+
     match build_enriched(&EnrichmentInput {
         normalized_title: game.normalized_title.clone(),
         raw_title: game.raw_title.clone(),
@@ -161,10 +170,37 @@ async fn enrich_game(game: &crate::models::MatchedGame, config: &Config) -> Opti
         steamspy_api: config.steamspy_api.clone(),
         // HEAD-verify images against Steam's CDN so no listing ships a dead URL.
         verify_images: true,
+        page_details,
     }) {
         Ok(e) => Some(e),
         Err(e) => {
             warn!("Enrichment failed for {}: {e:#}", game.normalized_title);
+            None
+        }
+    }
+}
+
+/// Scrape the game page behind the best download candidate (bounded: one page
+/// per listing). Failures degrade to listing-level data, never abort a run.
+async fn fetch_page_details(
+    sources: &crate::config::Sources,
+    best: &crate::models::DownloadCandidate,
+) -> Option<crate::models::SourcePageDetails> {
+    if best.url.is_empty() {
+        return None;
+    }
+    let endpoint = match best.source_label {
+        crate::models::SourceLabel::Steamrip => &sources.steamrip,
+        crate::models::SourceLabel::Steamunlocked => &sources.steamunlocked,
+    };
+    match crate::scraper::scrape_game_page(endpoint, best.source_label.clone(), &best.url).await {
+        Ok(details) if !details.is_empty() => Some(details),
+        Ok(_) => {
+            debug!("Game page scrape produced nothing usable for {}", best.url);
+            None
+        }
+        Err(e) => {
+            debug!("Game page scrape failed for {}: {e:#}", best.url);
             None
         }
     }
@@ -549,6 +585,64 @@ async fn run_reconcile(config: Config) -> anyhow::Result<RunSummary> {
 }
 
 // ---------------------------------------------------------------------------
+// Reset: DESTRUCTIVE wipe of every listing + state, then relist from zero
+// ---------------------------------------------------------------------------
+
+/// Delete every listing on the site (drafts and published), clear state.json
+/// and the manifest. The next catalog run then relists everything from zero
+/// with the current code (deep-scraped download links, Steam-only images).
+async fn run_reset(config: Config) -> anyhow::Result<RunSummary> {
+    let start = Instant::now();
+    let mut ctx = make_context(&config, start).await?;
+    let mut summary = RunSummary::default();
+
+    let Some((client, _)) = &ctx.publisher else {
+        anyhow::bail!("reset requires a live API connection (no dry-run)");
+    };
+
+    info!("RESET: listing all owner games on the site");
+    let admin_games = client.list_admin_games().await?;
+    let total = admin_games.len();
+    info!(
+        "RESET: deleting {total} listings (drafts included) one by one; \
+         this is rate-limited and can take several minutes"
+    );
+
+    let mut deleted = 0usize;
+    for game in &admin_games {
+        if let Err(e) = client.delete_game(&game.slug).await {
+            warn!("RESET: failed to delete {}: {e:#}", game.slug);
+            summary.errors += 1;
+            continue;
+        }
+        deleted += 1;
+        summary.removed += 1;
+        summary.acted += 1;
+        ctx.index.entries.remove(&game.slug);
+    }
+
+    info!("RESET: deleted {deleted}/{total} listings; clearing state.json");
+
+    // Drop any remaining state entries (dry-run phantoms etc.) and persist.
+    ctx.index.entries.clear();
+    if let Err(e) = ctx.index.save() {
+        warn!("RESET: could not persist cleared state.json: {e:#}");
+    }
+
+    // Rewrite the manifest so published-games.json reflects the empty site.
+    if let Err(e) = export_manifest(&ctx) {
+        warn!("RESET: could not rewrite manifest: {e:#}");
+    }
+
+    info!(
+        "RESET complete: {deleted}/{total} listings deleted, state cleared. \
+         Run the catalog action next to relist everything from zero."
+    );
+    finish(&mut ctx, &mut summary, start)?;
+    Ok(summary)
+}
+
+// ---------------------------------------------------------------------------
 // Publishing (guide-exact payloads)
 // ---------------------------------------------------------------------------
 
@@ -663,11 +757,17 @@ async fn update_listing(
         return Ok(publish_now);
     }
 
-    // Published listing: refresh only the download set, preserve the rest.
+    // Published listing: refresh the download set and the volatile facts.
+    // Complete payloads keep version/fileSize/links in sync with the source.
     let patch = GamivoidGamePatch {
+        title: Some(enriched.listing_title.trim().to_string()),
         version: enriched.version.clone(),
         file_size: enriched.file_size.clone(),
         download_links: Some(enriched.download_links.clone()),
+        developer: enriched.developer.clone(),
+        publisher: enriched.publisher.clone(),
+        minimum: enriched.minimum.clone(),
+        recommended: enriched.recommended.clone(),
         ..Default::default()
     };
     client.patch_game(slug, &patch).await?;
@@ -772,7 +872,7 @@ fn game_create_payload(
     publish_now: bool,
 ) -> serde_json::Value {
     let mut map = serde_json::Map::new();
-    map.insert("title".into(), json_str(enriched.raw_title.trim()));
+    map.insert("title".into(), json_str(enriched.listing_title.trim()));
     map.insert("slug".into(), json_str(slug));
     map.insert("description".into(), json_str(&enriched.description));
     map.insert("article".into(), json_str(&enriched.article_md));
@@ -823,6 +923,8 @@ fn game_create_payload(
         map.insert("screenshots".into(), str_array(&enriched.screenshot_urls, 20));
         map.insert("screenshotAlts".into(), str_array(&enriched.screenshot_alts, 20));
     }
+    // Every download link carries the platform; the first is the primary
+    // button (the actual file-host link extracted from the source page).
     map.insert(
         "downloadLinks".into(),
         serde_json::Value::Array(
@@ -859,7 +961,12 @@ fn str_array(items: &[String], max: usize) -> serde_json::Value {
 
 /// PATCH payload for backfilling drafts (all content fields).
 fn game_create_patch_payload(enriched: &EnrichedGame, category: &str) -> GamivoidGamePatch {
+    let screenshots = (!enriched.screenshot_urls.is_empty())
+        .then(|| enriched.screenshot_urls.clone());
+    let screenshot_alts = (!enriched.screenshot_alts.is_empty())
+        .then(|| enriched.screenshot_alts.clone());
     GamivoidGamePatch {
+        title: Some(enriched.listing_title.trim().to_string()),
         description: Some(enriched.description.clone()),
         article: Some(enriched.article_md.clone()),
         seo_title: (!enriched.seo_title.is_empty()).then(|| enriched.seo_title.clone()),
@@ -873,6 +980,14 @@ fn game_create_patch_payload(enriched: &EnrichedGame, category: &str) -> Gamivoi
         version: enriched.version.clone(),
         file_size: enriched.file_size.clone(),
         download_links: Some(enriched.download_links.clone()),
+        developer: enriched.developer.clone(),
+        publisher: enriched.publisher.clone(),
+        storage: enriched.storage.clone(),
+        cover_image: enriched.cover_image_url.clone(),
+        cover_alt: enriched.cover_alt.clone(),
+        hero_image: enriched.hero_image_url.clone(),
+        screenshots,
+        screenshot_alts,
         ..Default::default()
     }
     .with_category(category)

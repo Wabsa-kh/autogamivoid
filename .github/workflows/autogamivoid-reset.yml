@@ -1,0 +1,55 @@
+name: Reset (delete ALL listings + relist from zero)
+
+# DESTRUCTIVE one-off: deletes every draft and published listing on the site
+# and clears state.json, then (optional, on by default) immediately relists
+# everything from zero with the current catalog code - complete listings with
+# real download links, Steam CDN images and all publish fields filled.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type RESET (all caps) to confirm deleting every listing'
+        required: true
+        default: ''
+      relist:
+        description: 'Relist from zero (catalog) right after the reset'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  guard:
+    name: Confirm deletion
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require typed confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "RESET" ]; then
+            echo "::error::You must type RESET in the confirm field to delete every listing."
+            exit 1
+          fi
+
+  reset:
+    needs: guard
+    uses: ./.github/workflows/autogamivoid-run.yml
+    with:
+      action: reset
+      action_limit: '5000'
+      seconds_limit: '2700'
+      publish_mode: 'publish'
+    secrets: inherit
+
+  relist:
+    needs: [guard, reset]
+    if: ${{ github.event.inputs.relist == 'true' }}
+    uses: ./.github/workflows/autogamivoid-run.yml
+    with:
+      action: catalog
+      action_limit: '200'
+      seconds_limit: '2700'
+      publish_mode: 'publish'
+    secrets: inherit

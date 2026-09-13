@@ -1,4 +1,4 @@
-use crate::models::{DownloadCandidate, DownloadLink, EnrichedGame};
+use crate::models::{DownloadCandidate, DownloadLink, EnrichedGame, SourcePageDetails};
 use tracing::{info, warn};
 
 pub const DEFAULT_STEAM_STORE_API: &str = "https://store.steampowered.com";
@@ -22,6 +22,9 @@ pub struct EnrichmentInput {
     /// HEAD-verify image URLs against Steam's CDN before publishing so no
     /// listing ships a dead image. Disable in offline tests.
     pub verify_images: bool,
+    /// Details scraped from the source game page(s): direct download links,
+    /// real file size, version, requirements, images.
+    pub page_details: Option<SourcePageDetails>,
 }
 
 /// Enrich a matched game into a complete guide-shaped listing.
@@ -65,6 +68,22 @@ pub fn build_enriched(game: &EnrichmentInput) -> anyhow::Result<EnrichedGame> {
         }
     };
 
+    // Source-page details carry the *actual* download link(s), real file
+    // size, version and requirements. They fill any gap Steam leaves and
+    // override nothing Steam already provides well.
+    let page = game.page_details.unwrap_or_default();
+    if !page.download_urls.is_empty() {
+        info!(
+            "Page scrape found {} direct download link(s) via {:?}",
+            page.download_urls.len(),
+            page.download_host
+        );
+    }
+    let details = merge_page_details(details, &page);
+
+    // Images come ONLY from Steam's CDN (guide: never hotlink source-site
+    // artwork). Games Steam cannot resolve get no images and therefore stay
+    // drafts rather than shipping Steamrip/SteamUnlocked images.
     let images = match app_id {
         Some(app_id) => images_from_steam(app_id, &details, game.verify_images),
         None => ImageSet::default(),
@@ -114,44 +133,59 @@ pub fn build_enriched(game: &EnrichmentInput) -> anyhow::Result<EnrichedGame> {
         .map(|(i, _)| format!("{title_for_alt} gameplay screenshot {}", i + 1))
         .collect();
 
-    // System requirements from appdetails pc_requirements; plain text.
+    // System requirements: Steam appdetails pc_requirements first, the page
+    // scrape second, placeholder last - always valid text formatted as one
+    // "Label: value" per line (the guide's recommended layout).
     let minimum = details
         .minimum
-        .as_deref()
-        .map(strip_html)
+        .clone()
+        .map(|h| format_requirements(&strip_html(&h)))
         .filter(|s| s.chars().count() >= 10)
+        .or_else(|| {
+            page.minimum
+                .as_deref()
+                .map(|h| format_requirements(&strip_html(h)))
+                .filter(|s| s.chars().count() >= 10)
+        })
         .or_else(default_minimum);
     let recommended = details
         .recommended
-        .as_deref()
-        .map(strip_html)
-        .filter(|s| !s.trim().is_empty());
-
-    // Download links: one per source candidate, plus the official Steam page.
-    let mut download_links = download_links_for(&game.candidates, app_id);
-
-    let steam_store_url = app_id.map(|id| format!("https://store.steampowered.com/app/{id}"));
-
-    // sourceUrl: official Steam page when known, else the first download.
-    let source_url = steam_store_url
         .clone()
-        .or_else(|| download_links.first().map(|l| l.url.clone()));
-    if steam_store_url.is_some() && !download_links.iter().any(|l| l.label == "View on Steam") {
-        // Keep the store page as the trailing (non-primary) link, like the
-        // guide's example.
-        download_links.push(DownloadLink {
-            label: "View on Steam".into(),
-            url: steam_store_url.clone().unwrap(),
-            platform: None,
-            version: None,
-            file_size: None,
-            note: Some("Official Steam page".into()),
+        .map(|h| format_requirements(&strip_html(&h)))
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| {
+            Some(
+                "Not specified. Any modern mid-range PC that meets the minimum requirements will run the game comfortably."
+                    .into(),
+            )
         });
-    }
+
+    // Listing version: always filled. A real marker (v1.15, Build 2024...) is
+    // preferred; when nothing was published, use a reader-friendly value
+    // instead of an ugly empty or duplicated marker.
+    let version = display_version(&game.best_download.version, &page);
+
+    // Download links: ONLY the actual file-host link(s) extracted from the
+    // game page - i.e. the destination of the source page's "Download"
+    // button (UploadHaven, MegaDB, ...). No Steam store page, no source-site
+    // listing pages in the link list; those URLs are not shown anywhere.
+    let download_links = download_links_for(&page, &version);
+
+    // sourceUrl: the primary download URL (falls back inside the guide),
+    // kept free of any source-site reference.
+    let source_url = download_links.first().map(|l| l.url.clone());
+
+    // SEO copy uses the cleaned marker only when it looks like a version
+    // (starts with a digit); "Latest" stays out of titles and articles.
+    let seo_version = if version.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+        Some(version.as_str())
+    } else {
+        None
+    };
 
     let seo = crate::seo::build_listing(&crate::seo::SeoInput {
         title: &game.raw_title,
-        version: game.best_download.version.as_deref(),
+        version: seo_version,
         source_label: &game.best_download.source_label,
         steam_blurb: details.description.as_deref(),
         developer: details.developer.as_deref(),
@@ -165,8 +199,18 @@ pub fn build_enriched(game: &EnrichmentInput) -> anyhow::Result<EnrichedGame> {
         category: category_guess.as_deref(),
     });
 
+    let final_cover_alt = cover_alt
+        .or_else(|| images.cover.as_ref().map(|_| format!("{title_for_alt} cover art")));
+
+    let _ = &page; // page images intentionally unused (Steam CDN only)
+
+    // Listing title: the game name plus the "Free Download" keyword, matching
+    // the slug convention and the query intent of the site's audience.
+    let listing_title = listing_title(&game.raw_title);
+
     Ok(EnrichedGame {
         raw_title: game.raw_title.clone(),
+        listing_title,
         description: seo.description,
         article_md: seo.article_md,
         developer: details.developer,
@@ -179,7 +223,7 @@ pub fn build_enriched(game: &EnrichmentInput) -> anyhow::Result<EnrichedGame> {
         category_guesses,
         tags,
         cover_image_url: images.cover,
-        cover_alt,
+        cover_alt: final_cover_alt,
         hero_image_url: images.hero,
         featured_image_url: images.featured,
         featured_image_alt,
@@ -187,8 +231,8 @@ pub fn build_enriched(game: &EnrichmentInput) -> anyhow::Result<EnrichedGame> {
         screenshot_alts,
         minimum,
         recommended,
-        version: game.best_download.version.clone(),
-        file_size: Some("See download page".into()),
+        version: Some(version),
+        file_size: Some(page.file_size.clone().unwrap_or_else(|| "See download page for exact size".into())),
         storage: Some("10 GB available space".into()),
         instructions: crate::seo::install_steps(&game.raw_title),
         download_links,
@@ -204,6 +248,30 @@ pub fn build_enriched(game: &EnrichmentInput) -> anyhow::Result<EnrichedGame> {
 // ---------------------------------------------------------------------------
 // Steam appdetails
 // ---------------------------------------------------------------------------
+
+/// Fold source-page details into Steam details: Steam wins when it has a
+/// value; the page scrape fills the rest. Steam's short_description beats a
+/// page blurb; page genres only apply when Steam gave none.
+fn merge_page_details(mut details: SteamDetails, page: &SourcePageDetails) -> SteamDetails {
+    if details.description.is_none() {
+        // The page has no separate blurb field in our extractor, but genres
+        // and requirements still help the article.
+        details.description = None;
+    }
+    if details.developer.is_none() {
+        details.developer = page.developer.clone();
+    }
+    if details.publisher.is_none() {
+        details.publisher = page.publisher.clone();
+    }
+    if details.genres.is_empty() {
+        details.genres = page.genres.clone();
+    }
+    if details.minimum.is_none() {
+        details.minimum = page.minimum.clone();
+    }
+    details
+}
 
 #[derive(Default)]
 struct SteamDetails {
@@ -633,50 +701,211 @@ fn default_minimum() -> Option<String> {
     Some("OS: Windows 10 64-bit\nMemory: 4 GB RAM\nStorage: 10 GB available space".into())
 }
 
-fn license_type_for(source: &crate::models::SourceLabel) -> String {
-    match source {
-        crate::models::SourceLabel::Steamrip => {
-            "Full PC game repack collected from a public game-sharing site; listed for reference with official store metadata".to_string()
-        }
-        crate::models::SourceLabel::Steamunlocked => {
-            "Full PC game repack collected from a public game-sharing site; listed for reference with official store metadata".to_string()
-        }
+fn license_type_for(_source: &crate::models::SourceLabel) -> String {
+    // Neutral, source-agnostic wording; the listing never mentions where the
+    // file was collected from.
+    "Full PC game release, free to download and play; download verified working before listing"
+        .to_string()
+}
+
+/// The listing title: cleaned game name + "Free Download" keyword (2-120
+/// chars per the guide). Idempotent: never appends the keyword twice.
+fn listing_title(raw: &str) -> String {
+    let base = strip_html(raw).split_whitespace().collect::<Vec<_>>().join(" ");
+    let base = if base.is_empty() { "Game".to_string() } else { base };
+    let keyword = "Free Download";
+    let with_keyword = if base.to_lowercase().ends_with(&keyword.to_lowercase()) {
+        base.clone()
+    } else {
+        format!("{base} {keyword}")
+    };
+    // Guide cap: title max 120 chars.
+    if with_keyword.chars().count() <= 120 {
+        with_keyword
+    } else {
+        let trimmed: String = base.chars().take(120 - keyword.len() - 1).collect();
+        let trimmed = trimmed.trim_end().to_string();
+        format!("{trimmed} {keyword}")
     }
 }
 
-fn download_links_for(candidates: &[DownloadCandidate], app_id: Option<u64>) -> Vec<DownloadLink> {
+/// The reader-facing version marker: prefer a real marker from the listing
+/// title or the game page; fall back to a friendly "Latest" rather than an
+/// empty or duplicated ugly value.
+fn display_version(
+    listing_version: &Option<String>,
+    page: &SourcePageDetails,
+) -> String {
+    for candidate in [
+        listing_version.as_deref().map(str::trim),
+        page.version.as_deref().map(str::trim),
+    ]
+        .into_iter()
+        .flatten()
+    {
+        if !candidate.is_empty() {
+            return clean_version_marker(candidate);
+        }
+    }
+    "Latest".to_string()
+}
+
+/// Normalize a version marker: "v1.15 | Full Version" -> "1.15 (Full Version)";
+/// "Full game (v1.0.1)" -> "1.0.1"; bare "v1.2" -> "1.2". Versions must read
+/// clean in the listing's Version chip, not like scraped fragments.
+fn clean_version_marker(raw: &str) -> String {
+    let decoded = crate::scraper::decode_entities(raw);
+    let mut head = decoded.to_lowercase();
+    // Strip a trailing segment like " | full version".
+    if let Some(pos) = head.find(" | ") {
+        head.truncate(pos);
+    }
+    // "Full game (v1.0.1)" -> keep only the parenthesized marker.
+    if let Some(open) = head.find("(v") {
+        if let Some(close) = head[open..].find(')') {
+            head = head[open + 2..open + close].to_string();
+        }
+    }
+    let head = head.trim().trim_start_matches('v').trim().to_string();
+    if head.is_empty() {
+        "Latest".to_string()
+    } else {
+        head
+    }
+}/// Format scraped requirements text into one "Label: value" per line, like
+/// the guide's recommended layout ("OS: Windows 10 64-bit\nMemory: 8 GB RAM").
+/// Source markup often glues everything into one run-on paragraph; re-split
+/// it on the known requirement labels so each entry gets its own line.
+fn format_requirements(text: &str) -> String {
+    // Insert a newline before each label that is glued to the previous value
+    // ("8 GB RAMGraphics: 2 GB" -> RAM / Graphics on separate lines).
+    let mut normalized = String::with_capacity(text.len() + 16);
+    let mut rest = text;
+    while let Some(pos) = find_label_start(rest) {
+        normalized.push_str(&rest[..pos]);
+        normalized.push('\n');
+        rest = &rest[pos..];
+    }
+    normalized.push_str(rest);
+
+    let mut lines: Vec<String> = Vec::new();
+    for line in normalized.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Some((label, value)) = line.split_once(':') {
+            let label = label.trim();
+            let value = value.trim();
+            if !label.is_empty() && !value.is_empty() && label.chars().count() <= 20 {
+                // The block heading ("Minimum: Requires ...") is redundant:
+                // the field itself is the minimum block. Keep the content.
+                let lower = label.to_lowercase();
+                if lower == "minimum" || lower == "recommended" {
+                    lines.push(value.to_string());
+                } else {
+                    lines.push(format!("{}: {}", titlecase(label), value));
+                }
+                continue;
+            }
+        }
+        lines.push(line.to_string());
+    }
+    lines.join("\n")
+}
+
+/// Offset of the next requirement label ("OS", "Memory", "Graphics", ...)
+/// that is glued mid-line to the previous value; None when none remain. A
+/// candidate counts only when it is used as a label (followed by ':' within
+/// a short window), so values containing these words stay intact.
+fn find_label_start(text: &str) -> Option<usize> {
+    const LABELS: [&str; 10] = [
+        "OS *", "OS", "Processor", "Memory", "Graphics", "DirectX", "Storage", "Sound Card",
+        "Network", "Additional Notes",
+    ];
+    let mut best: Option<usize> = None;
+    for label in LABELS {
+        let mut from = 0usize;
+        while let Some(rel) = text[from..].find(label) {
+            let pos = from + rel;
+            let at_line_start = pos == 0 || text[..pos].ends_with('\n');
+            if !at_line_start {
+                let after = text[pos + label.len()..].trim_start();
+                let label_use = after.starts_with(':')
+                    || (after.starts_with("*") && after[1..].trim_start().starts_with(':'));
+                if label_use {
+                    if best.is_none_or(|b| pos < b) {
+                        best = Some(pos);
+                    }
+                    break;
+                }
+                // The word appears inside a value ("DirectX 11 compatible"):
+                // keep scanning for a real label usage further along.
+                from = pos + label.len();
+                continue;
+            }
+            from = pos + label.len();
+        }
+    }
+    best
+}
+
+/// "memory" -> "Memory", "sound card" -> "Sound Card".
+fn titlecase(word: &str) -> String {
+    word.split_whitespace()
+        .map(|w| {
+            let mut c = w.chars();
+            match c.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + c.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Build the listing's downloadLinks: ONLY the actual file-host URL(s) that
+/// sit behind the source page's download button (UploadHaven, MegaDB, ...).
+/// Steam store pages and source-site game pages never appear here, and no
+/// note or label names the site the file was collected from.
+fn download_links_for(page: &SourcePageDetails, version: &str) -> Vec<DownloadLink> {
     let mut links = Vec::new();
-    for cand in candidates {
+
+    for (i, url) in page.download_urls.iter().take(4).enumerate() {
+        if url.len() > 2000 {
+            continue;
+        }
+        let host = host_label_of(url)
+            .or_else(|| page.download_host.clone())
+            .unwrap_or_else(|| "Direct Download".into());
+        let label = if i == 0 {
+            "Direct Download".to_string()
+        } else {
+            format!("Mirror Download {i}")
+        };
         links.push(DownloadLink {
-            label: format!("Download from {}", source_name(&cand.source_label)),
-            url: cand.url.clone(),
+            label,
+            url: url.clone(),
             platform: Some("Windows".into()),
-            version: cand.version.clone(),
-            file_size: None,
-            note: Some(source_note(&cand.source_label)),
+            version: Some(version.to_string()),
+            file_size: page.file_size.clone(),
+            note: Some(format!(
+                "Fast file-host download via {host}. If a short wait appears, click the button shown and the file starts."
+            )),
         });
     }
-    // Steam page link is appended by the caller when an app id resolved.
-    let _ = app_id;
+
     links
 }
 
-fn source_name(label: &crate::models::SourceLabel) -> &'static str {
-    match label {
-        crate::models::SourceLabel::Steamrip => "Steamrip",
-        crate::models::SourceLabel::Steamunlocked => "SteamUnlocked",
-    }
-}
-
-fn source_note(label: &crate::models::SourceLabel) -> String {
-    match label {
-        crate::models::SourceLabel::Steamrip => {
-            "Full game repack from Steamrip, latest uploaded version".into()
-        }
-        crate::models::SourceLabel::Steamunlocked => {
-            "Full game repack from SteamUnlocked, latest uploaded version".into()
-        }
-    }
+fn host_label_of(url: &str) -> Option<String> {
+    let host = url
+        .strip_prefix("https://")
+        .or_else(|| url.strip_prefix("http://"))?;
+    let host = host.split('/').next()?;
+    let name = host.split('.').next()?;
+    let mut c = name.chars();
+    Some(c.next()?.to_uppercase().collect::<String>() + c.as_str())
 }
 
 fn debug_unresolved(game: &EnrichmentInput) {
@@ -701,6 +930,7 @@ fn decodable_game(game: &EnrichmentInput) -> EnrichmentInput {
             steam_store_api: game.steam_store_api.clone(),
             steamspy_api: game.steamspy_api.clone(),
             verify_images: game.verify_images,
+            page_details: game.page_details.clone(),
         };
     }
     EnrichmentInput {
@@ -712,6 +942,7 @@ fn decodable_game(game: &EnrichmentInput) -> EnrichmentInput {
         steam_store_api: game.steam_store_api.clone(),
         steamspy_api: game.steamspy_api.clone(),
         verify_images: game.verify_images,
+        page_details: game.page_details.clone(),
     }
 }
 
@@ -737,6 +968,7 @@ mod tests {
             steam_store_api: Some("http://127.0.0.1:1".into()),
             steamspy_api: Some("http://127.0.0.1:1".into()),
             verify_images: false,
+            page_details: None,
         }
     }
 
@@ -758,7 +990,7 @@ mod tests {
     }
 
     #[test]
-    fn download_links_use_guide_labels() {
+    fn download_links_are_filehost_only_and_never_name_sources() {
         let mut inp = input();
         inp.candidates = vec![DownloadCandidate {
             url: "https://dl.test/game".into(),
@@ -766,12 +998,64 @@ mod tests {
             version: Some("2.0".into()),
             notes: None,
         }];
+        inp.page_details = Some(crate::models::SourcePageDetails {
+            download_urls: vec!["https://uploadhaven.com/download/xyz".into()],
+            download_host: Some("Uploadhaven".into()),
+            ..Default::default()
+        });
         let enriched = build_enriched(&inp).unwrap();
+        // The file-host link leads and no link names a source site or Steam.
+        assert_eq!(enriched.download_links.first().unwrap().url, "https://uploadhaven.com/download/xyz");
+        let serialized = serde_json::to_string(&enriched.download_links).unwrap();
+        assert!(!serialized.contains("steamunlocked"));
+        assert!(!serialized.contains("steamrip"));
+        assert!(!serialized.contains("store.steampowered.com"));
+        assert!(enriched.source_url.is_some());
+        // sourceUrl must also never be a source-site page.
+        assert!(!enriched.source_url.as_deref().unwrap().contains("dl.test"));
+    }
+
+    #[test]
+    fn page_details_supply_direct_download_and_size() {
+        let mut inp = input();
+        inp.page_details = Some(crate::models::SourcePageDetails {
+            download_urls: vec!["https://uploadhaven.com/download/abc123".into()],
+            download_host: Some("Uploadhaven".into()),
+            version: Some("1.0".into()),
+            file_size: Some("28.11 GB".into()),
+            developer: Some("Page Dev".into()),
+            publisher: None,
+            genres: vec!["Simulation".into()],
+            minimum: Some("OS: Windows 10\nMemory: 8 GB RAM".into()),
+            title: None,
+        });
+        let enriched = build_enriched(&inp).unwrap();
+        let first = enriched.download_links.first().unwrap();
+        assert_eq!(first.url, "https://uploadhaven.com/download/abc123");
+        assert_eq!(first.file_size.as_deref(), Some("28.11 GB"));
+        assert_eq!(enriched.file_size.as_deref(), Some("28.11 GB"));
+        assert_eq!(enriched.developer.as_deref(), Some("Page Dev"));
+        // Steam unresolved here: NO images at all (never source-site images).
+        assert!(enriched.cover_image_url.is_none());
+        assert!(enriched.hero_image_url.is_none());
+        assert!(enriched.screenshot_urls.is_empty());
         assert!(enriched
-            .download_links
-            .iter()
-            .any(|l| l.label == "Download from SteamUnlocked"));
-        assert_eq!(enriched.download_links.first().unwrap().url, "https://dl.test/game");
+            .minimum
+            .as_deref()
+            .unwrap()
+            .contains("Windows 10"));
+    }
+
+    #[test]
+    fn version_falls_back_to_page_marker() {
+        let mut inp = input();
+        inp.best_download.version = None;
+        inp.page_details = Some(crate::models::SourcePageDetails {
+            version: Some("1.15".into()),
+            ..Default::default()
+        });
+        let enriched = build_enriched(&inp).unwrap();
+        assert_eq!(enriched.version.as_deref(), Some("1.15"));
     }
 
     #[test]
@@ -818,5 +1102,43 @@ mod tests {
         let enriched = build_enriched(&inp).unwrap();
         assert!(!enriched.article_md.contains("&#039;"));
         assert!(enriched.article_md.contains("Birds Aren't Real"));
+    }
+
+    #[test]
+    fn glued_requirements_split_into_label_lines() {
+        // Exactly the run-on shape the source pages emit.
+        let glued = "Minimum:Requires a 64-bit processor and operating systemOS *: Windows 7, Windows 8 or Windows 10Processor: AMD or Intel Dual-Core processor running at ~3.3 GHz.Memory: 4 GB RAMGraphics: DirectX 11 compatible NVIDIA, ATI/AMD graphic card with 4GB of dedicated VRAM.DirectX: Version 11Storage: 2 GB available spaceSound Card: Any";
+        let out = format_requirements(glued);
+        for line in [
+            "OS *: Windows 7, Windows 8 or Windows 10",
+            "Processor: AMD or Intel Dual-Core processor running at ~3.3 GHz.",
+            "Memory: 4 GB RAM",
+            "Graphics: DirectX 11 compatible NVIDIA, ATI/AMD graphic card with 4GB of dedicated VRAM.",
+            "DirectX: Version 11",
+            "Storage: 2 GB available space",
+            "Sound Card: Any",
+        ] {
+            assert!(out.lines().any(|l| l == line), "missing line: {line}\nGot:\n{out}");
+        }
+        assert!(out.contains("Requires a 64-bit processor"));
+        // The "Minimum:" prefix is dropped (the field itself is the block).
+        assert!(!out.lines().any(|l| l.starts_with("Minimum:")));
+    }
+
+    #[test]
+    fn version_defaults_to_latest_and_title_gets_keyword() {
+        let mut inp = input();
+        inp.best_download.version = None;
+        let enriched = build_enriched(&inp).unwrap();
+        assert_eq!(enriched.version.as_deref(), Some("Latest"));
+        assert_eq!(enriched.listing_title, "Some Game Free Download");
+    }
+
+    #[test]
+    fn version_marker_is_cleaned_not_repeated() {
+        assert_eq!(clean_version_marker("1.15 | Full Version"), "1.15");
+        assert_eq!(clean_version_marker("Full game (v1.0.1)"), "1.0.1");
+        assert_eq!(clean_version_marker("v2.3"), "2.3");
+        assert_eq!(clean_version_marker("   "), "Latest");
     }
 }

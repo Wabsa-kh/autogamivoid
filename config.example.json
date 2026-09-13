@@ -19,6 +19,6 @@
   },
   "state_path": "state.json",
   "site_name": "Gamivoid",
-  "publish_mode": "draft",
+  "publish_mode": "publish",
   "dry_run": false
 }
