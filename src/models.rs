@@ -53,81 +53,151 @@ pub struct DownloadCandidate {
     pub notes: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+/// One entry of the API guide's `downloadLinks` array.
+#[derive(Clone, Debug, Serialize)]
+pub struct DownloadLink {
+    pub label: String,
+    pub url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub platform: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_size: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+/// A complete, guide-shaped listing: every field the publishing API accepts
+/// that we can produce. `description` is plain text; `article_md` is safe
+/// Markdown (the API renders it and rejects raw HTML).
+#[derive(Clone, Debug)]
 pub struct EnrichedGame {
-    pub normalized_title: String,
     pub raw_title: String,
     pub description: String,
+    pub article_md: String,
     pub developer: Option<String>,
     pub publisher: Option<String>,
     pub release_date: Option<String>,
     pub platforms: Vec<String>,
+    /// Primary category guess; the workflow maps it to an exact taxonomy value.
+    pub category_guess: Option<String>,
+    /// Extra taxonomy categories (workflow maps each through exact_match).
+    pub category_guesses: Vec<String>,
     pub tags: Vec<String>,
-    pub category: Option<String>,
     pub cover_image_url: Option<String>,
+    pub cover_alt: Option<String>,
     pub hero_image_url: Option<String>,
+    pub featured_image_url: Option<String>,
+    pub featured_image_alt: Option<String>,
     pub screenshot_urls: Vec<String>,
-    pub downloads: Vec<DownloadCandidate>,
-    pub steam_store_url: Option<String>,
-    /// SEO: `<title>`-style string, kept short (~60 chars).
-    pub meta_title: String,
-    /// SEO: meta description, kept under ~155 chars.
-    pub meta_description: String,
-    /// SEO: keyword list for meta keywords / tag clouds.
-    pub meta_keywords: Vec<String>,
-    /// RFC3339 timestamp set by the workflow when the listing is published.
+    pub screenshot_alts: Vec<String>,
+    /// Publish gate: needs 10+ chars when publishing.
+    pub minimum: Option<String>,
+    pub recommended: Option<String>,
+    pub version: Option<String>,
+    pub file_size: Option<String>,
+    pub storage: Option<String>,
+    pub instructions: Vec<String>,
+    pub download_links: Vec<DownloadLink>,
+    pub source_url: Option<String>,
+    pub license_type: String,
+    /// SEO title, max 120 chars (guide field: seoTitle).
+    pub seo_title: String,
+    /// SEO description, max 320 chars (guide field: seoDescription).
+    pub seo_description: String,
+    pub steam_app_id: Option<u64>,
     pub published_at: Option<String>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+/// PATCH body: `Option` fields map directly to "fields omitted are preserved".
+#[derive(Clone, Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GamivoidGamePatch {
-    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_size: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub download_links: Option<Vec<DownloadLink>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub published: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    pub developer: Option<String>,
-    pub publisher: Option<String>,
-    pub release_date: Option<String>,
-    pub platforms: Option<Vec<String>>,
-    pub tags: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub article: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seo_title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seo_description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recommended: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub license_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub category: Option<String>,
-    pub cover_image: Option<String>,
-    pub hero_image: Option<String>,
-    pub screenshot_urls: Option<Vec<String>>,
-    pub downloads: Option<Vec<DownloadCandidate>>,
-    pub steam_store_url: Option<String>,
-    pub meta_title: Option<String>,
-    pub meta_description: Option<String>,
-    pub meta_keywords: Option<Vec<String>>,
-    pub published_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
 }
 
-impl GamivoidGamePatch {
-    #[allow(clippy::option_option)]
-    pub fn all_fields_none(&self) -> bool {
-        self.title.is_none()
-            && self.description.is_none()
-            && self.developer.is_none()
-            && self.publisher.is_none()
-            && self.release_date.is_none()
-            && self.platforms.is_none()
-            && self.tags.is_none()
-            && self.category.is_none()
-            && self.cover_image.is_none()
-            && self.hero_image.is_none()
-            && self.screenshot_urls.is_none()
-            && self.downloads.is_none()
-            && self.steam_store_url.is_none()
-            && self.meta_title.is_none()
-            && self.meta_description.is_none()
-            && self.meta_keywords.is_none()
-            && self.published_at.is_none()
-    }
-}
-
-/// Minimal shape of the gamivoid API create-game response.
+/// Create response envelope per the guide: `{ "game": { ... } }` (HTTP 201).
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct GamivoidPublishedGame {
+pub struct GameEnvelope {
+    pub game: GamivoidGameSummary,
+}
+
+/// The part of a saved game we need back from create/patch responses.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GamivoidGameSummary {
     pub slug: String,
+    #[serde(default)]
+    pub published: bool,
+    #[serde(default)]
+    pub etag: Option<String>,
+}
+
+/// Owner listing shape used by the reconcile action (GET /api/admin/games).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AdminGame {
+    pub slug: String,
+    #[serde(default)]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub published: bool,
+}
+
+/// Lenient admin-list parsing: accepts `{"games": [...]}` or a bare array.
+pub fn parse_admin_games(value: &serde_json::Value) -> Vec<AdminGame> {
+    let arr = match value {
+        serde_json::Value::Array(arr) => Some(arr.clone()),
+        serde_json::Value::Object(map) => map
+            .get("games")
+            .or_else(|| map.get("data"))
+            .and_then(|v| v.as_array())
+            .cloned(),
+        _ => None,
+    };
+    arr.unwrap_or_default()
+        .into_iter()
+        .filter_map(|item| serde_json::from_value::<AdminGame>(item).ok())
+        .collect()
+}
+
+/// Cursor fields some list responses include.
+pub fn parse_cursor(value: &serde_json::Value) -> Option<(bool, Option<String>)> {
+    let obj = value.as_object()?;
+    let has_more = obj.get("hasMore").and_then(|v| v.as_bool())?;
+    let next = obj
+        .get("nextCursor")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    Some((has_more, next))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -139,6 +209,11 @@ pub struct IndexEntry {
     pub last_download_source: Option<SourceLabel>,
     #[serde(default)]
     pub published_at: Option<String>,
+    /// True only once the listing is confirmed to exist on the site (a
+    /// successful create/patch response or a reconcile hit). Entries written
+    /// by older dry-runs carry false and are republished.
+    #[serde(default)]
+    pub verified: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -206,5 +281,105 @@ impl<'de> Deserialize<'de> for Taxonomy {
         }
 
         Ok(Taxonomy { categories })
+    }
+}
+
+impl Taxonomy {
+    /// Exact (case-insensitive) match against the live taxonomy values.
+    pub fn exact_match(&self, candidate: &str) -> Option<String> {
+        self.categories
+            .iter()
+            .find(|c| c.eq_ignore_ascii_case(candidate.trim()))
+            .cloned()
+    }
+
+    /// The first present value from a preference list (e.g. safe fallbacks).
+    pub fn first_present(&self, prefs: &[&str]) -> Option<String> {
+        prefs.iter().find_map(|p| self.exact_match(p))
+    }
+}
+
+impl GamivoidGamePatch {
+    /// Builder: include the primary category in the patch.
+    pub fn with_category(mut self, category: &str) -> Self {
+        self.category = Some(category.to_string());
+        self
+    }
+
+    /// Builder: include tags in the patch.
+    pub fn with_tags(mut self, tags: &[String]) -> Self {
+        self.tags = Some(tags.iter().take(30).cloned().collect());
+        self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create_envelope_parses_guide_shape() {
+        let text = r#"{"game":{"slug":"example-arena","published":false}}"#;
+        let env: GameEnvelope = serde_json::from_str(text).unwrap();
+        assert_eq!(env.game.slug, "example-arena");
+        assert!(!env.game.published);
+    }
+
+    #[test]
+    fn patch_serializes_guide_field_names() {
+        let patch = GamivoidGamePatch {
+            file_size: Some("2.4 GB".into()),
+            download_links: Some(vec![DownloadLink {
+                label: "Download game".into(),
+                url: "https://dl.test/x".into(),
+                platform: Some("Windows".into()),
+                version: Some("1.0".into()),
+                file_size: None,
+                note: None,
+            }]),
+            seo_title: Some("T Free Download PC Game".into()),
+            license_type: Some("Free to play".into()),
+            ..Default::default()
+        };
+        let v = serde_json::to_value(&patch).unwrap();
+        assert!(v.get("fileSize").is_some());
+        assert!(v.get("downloadLinks").is_some());
+        assert!(v.get("seoTitle").is_some());
+        assert!(v.get("licenseType").is_some());
+        assert!(v.get("metaTitle").is_none());
+        // skipped-None fields must be absent, not null
+        assert!(v["downloadLinks"][0].get("fileSize").is_none());
+    }
+
+    #[test]
+    fn admin_list_parses_wrapped_and_cursor_shapes() {
+        let wrapped: serde_json::Value = serde_json::from_str(
+            r#"{"games":[{"slug":"a","published":true},{"slug":"b"}],"hasMore":false}"#,
+        )
+        .unwrap();
+        let games = parse_admin_games(&wrapped);
+        assert_eq!(games.len(), 2);
+        assert_eq!(games[0].slug, "a");
+        assert!(games[0].published);
+        assert!(!games[1].published);
+        assert_eq!(parse_cursor(&wrapped), Some((false, None)));
+    }
+
+    #[test]
+    fn taxonomy_exact_match_is_case_insensitive() {
+        let tax = Taxonomy {
+            categories: vec!["Action".into(), "RPG".into()],
+        };
+        assert_eq!(tax.exact_match("action"), Some("Action".into()));
+        assert_eq!(tax.exact_match("Action"), Some("Action".into()));
+        assert_eq!(tax.exact_match("Shooter"), None);
+        assert_eq!(tax.first_present(&["Shooter", "RPG"]), Some("RPG".into()));
+    }
+
+    #[test]
+    fn index_entry_verified_defaults_false() {
+        let text = r#"{"slug":"x","last_version":null,"last_download_source":null}"#;
+        let entry: IndexEntry = serde_json::from_str(text).unwrap();
+        assert!(!entry.verified);
     }
 }

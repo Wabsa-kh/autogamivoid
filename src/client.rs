@@ -3,6 +3,14 @@ use std::time::Duration;
 use tracing::{debug, warn};
 use url::Url;
 
+/// One completed HTTP exchange: status, response headers, body.
+pub struct RawResponse {
+    pub status: u16,
+    pub etag: Option<String>,
+    pub body: serde_json::Value,
+    pub body_text: String,
+}
+
 pub struct HttpClient {
     client: reqwest::Client,
     base_url: Url,
@@ -30,35 +38,73 @@ impl HttpClient {
         })
     }
 
+    /// GET returning parsed JSON.
     pub async fn get<T: for<'de> Deserialize<'de>>(&self, path: &str) -> anyhow::Result<T> {
-        self.authorized_request::<T, ()>(self.base_url.join(path)?, reqwest::Method::GET, None)
-            .await
+        let raw = self.send_raw(reqwest::Method::GET, path, None, None).await?;
+        serde_json::from_value(raw.body)
+            .map_err(|e| anyhow::anyhow!("unexpected JSON shape from {path}: {e}"))
     }
 
+    /// POST returning parsed JSON (2xx) or a descriptive error.
     pub async fn post<T: for<'de> Deserialize<'de>, B: serde::Serialize>(
         &self,
         path: &str,
         body: &B,
     ) -> anyhow::Result<T> {
-        self.authorized_request::<T, B>(self.base_url.join(path)?, reqwest::Method::POST, Some(body))
-            .await
+        let payload = serde_json::to_vec(body)?;
+        let raw = self
+            .send_raw(reqwest::Method::POST, path, Some(payload), None)
+            .await?;
+        serde_json::from_value(raw.body)
+            .map_err(|e| anyhow::anyhow!("unexpected JSON shape from {path}: {e}"))
     }
 
-    pub async fn patch<T: for<'de> Deserialize<'de>, B: serde::Serialize>(
+    /// PATCH with `If-Match`. On 412 (stale ETag) re-fetches the listing,
+    /// merges nothing (caller sends full intended change) and retries once.
+    pub async fn patch_with_etag<B: serde::Serialize>(
         &self,
         path: &str,
         body: &B,
-    ) -> anyhow::Result<T> {
-        self.authorized_request::<T, B>(self.base_url.join(path)?, reqwest::Method::PATCH, Some(body))
-            .await
+    ) -> anyhow::Result<RawResponse> {
+        let payload = serde_json::to_vec(body)?;
+
+        let get_path = path.to_string();
+        let first = self
+            .send_raw(reqwest::Method::GET, &get_path, None, None)
+            .await?;
+        let etag = first.etag.clone();
+
+        let send = |etag: Option<String>| {
+            let payload = payload.clone();
+            async move {
+                self.send_raw(reqwest::Method::PATCH, path, Some(payload), etag)
+                    .await
+            }
+        };
+
+        match send(etag.clone()).await {
+            Ok(raw) => Ok(raw),
+            Err(e) if is_stale_etag(&e) => {
+                debug!("412 stale ETag on {path}; re-fetching and retrying once");
+                let fresh = self
+                    .send_raw(reqwest::Method::GET, &get_path, None, None)
+                    .await?;
+                send(fresh.etag).await
+            }
+            Err(e) => Err(e),
+        }
     }
 
-    async fn authorized_request<T: for<'de> Deserialize<'de>, B: serde::Serialize>(
+    /// Core request: retries 429/5xx with backoff (honoring Retry-After),
+    /// detects Cloudflare challenge pages, returns status+headers+body.
+    pub async fn send_raw(
         &self,
-        url: Url,
         method: reqwest::Method,
-        body: Option<&B>,
-    ) -> anyhow::Result<T> {
+        path: &str,
+        body: Option<Vec<u8>>,
+        if_match: Option<String>,
+    ) -> anyhow::Result<RawResponse> {
+        let url = self.base_url.join(path)?;
         let mut last_error: Option<anyhow::Error> = None;
 
         for attempt in 1..=self.max_retries {
@@ -72,11 +118,15 @@ impl HttpClient {
                 .client
                 .request(method.clone(), url.clone())
                 .header("Authorization", format!("Bearer {}", self.bearer_token))
-                .header("Content-Type", "application/json")
                 .header("Accept", "application/json");
-
-            if let Some(body) = body {
-                request = request.body(serde_json::to_string(body)?);
+            if body.is_some() {
+                request = request.header("Content-Type", "application/json");
+            }
+            if let Some(etag) = &if_match {
+                request = request.header("If-Match", etag.clone());
+            }
+            if let Some(body) = &body {
+                request = request.body(body.clone());
             }
 
             let response = match request.send().await {
@@ -84,49 +134,71 @@ impl HttpClient {
                 Err(e) => {
                     let message = e.to_string();
                     last_error = Some(anyhow::anyhow!(message.clone()));
-                    warn!("Request failed on attempt {}: {message}", attempt);
+                    warn!("Request failed on attempt {attempt}: {message}");
                     continue;
                 }
             };
 
-            let status = response.status();
+            let status = response.status().as_u16();
+            let etag = response
+                .headers()
+                .get("etag")
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_string);
 
-            if status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error() {
-                let delay = backoff_delay(attempt);
-                let reason = if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-                    "rate limited"
-                } else {
-                    "server error"
-                };
-                warn!("Retrying after {reason} (attempt {attempt}) in {:?}", delay);
+            if status == 429 || status >= 500 {
+                let retry_after = response
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse::<u64>().ok());
+                let delay = retry_after
+                    .map(Duration::from_secs)
+                    .unwrap_or_else(|| backoff_delay(attempt));
+                warn!(
+                    "Retrying after {} (attempt {attempt}) in {:?}",
+                    if status == 429 { "rate limit" } else { "server error" },
+                    delay
+                );
                 tokio::time::sleep(delay).await;
-                last_error = Some(anyhow::anyhow!("{reason}: HTTP {status} from {url}"));
+                last_error = Some(anyhow::anyhow!(
+                    "{}: HTTP {status} from {url}",
+                    if status == 429 { "rate limited" } else { "server error" }
+                ));
                 continue;
             }
 
             let bytes = response.bytes().await?;
-            if !status.is_success() {
-                let text = String::from_utf8_lossy(&bytes);
-                if is_cloudflare_challenge(&text) {
+            let body_text = String::from_utf8_lossy(&bytes).to_string();
+
+            if !(200..300).contains(&status) {
+                if is_cloudflare_challenge(&body_text) {
                     anyhow::bail!(
-                        "Cloudflare bot challenge blocked {status} {url}. \
+                        "Cloudflare bot challenge blocked HTTP {status} {url}. \
                          The runner's IP is not trusted by gamivoid.site's Cloudflare settings. \
-                         Fix: in the Cloudflare dashboard for gamivoid.site, add a WAF rule \
-                         'URI Path starts with /api/' -> Skip (available: Managed Rules, Bot Fight Mode \
-                         cannot be skipped on the free plan - turn it off instead). \
-                         See README section 'Cloudflare: letting the automation through'."
+                         Fix: in the Cloudflare dashboard for gamivoid.site add a WAF rule \
+                         'URI Path starts with /api/' -> Skip; Bot Fight Mode cannot be \
+                         skipped on the free plan (turn it off). See README section \
+                         'Cloudflare: letting the automation through'."
                     );
                 }
-                anyhow::bail!("API request failed: {status} {url} — {}", text.chars().take(300).collect::<String>());
+                anyhow::bail!(
+                    "API request failed: HTTP {status} {url} — {}",
+                    body_text.chars().take(300).collect::<String>()
+                );
             }
 
-            let payload: T = serde_json::from_slice(&bytes)?;
-            return Ok(payload);
+            let parsed = serde_json::from_str(&body_text).unwrap_or(serde_json::Value::Null);
+            return Ok(RawResponse {
+                status,
+                etag,
+                body: parsed,
+                body_text,
+            });
         }
 
-        let err = last_error.unwrap_or_else(|| {
-            anyhow::anyhow!("request failed after {} attempts", self.max_retries)
-        });
+        let err = last_error
+            .unwrap_or_else(|| anyhow::anyhow!("request failed after {} attempts", self.max_retries));
         anyhow::bail!("request failed: {err:#}");
     }
 
@@ -135,6 +207,10 @@ impl HttpClient {
             tokio::time::sleep(self.request_pause).await;
         }
     }
+}
+
+fn is_stale_etag(err: &anyhow::Error) -> bool {
+    err.to_string().contains("HTTP 412")
 }
 
 fn backoff_delay(attempt: u32) -> Duration {
@@ -184,5 +260,11 @@ mod tests {
         assert!(!is_cloudflare_challenge(
             "{\"categories\":[\"Action\"]}"
         ));
+    }
+
+    #[test]
+    fn stale_etag_detection() {
+        assert!(is_stale_etag(&anyhow::anyhow!("API request failed: HTTP 412 http://x")));
+        assert!(!is_stale_etag(&anyhow::anyhow!("API request failed: HTTP 400 http://x")));
     }
 }

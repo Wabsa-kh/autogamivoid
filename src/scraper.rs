@@ -333,7 +333,7 @@ fn to_source_games(links: Vec<GameLink>, label: SourceLabel) -> Vec<SourceGame> 
 /// clean title plus a version marker. Handles `[v1.5]`, `(v1.5)`,
 /// `(Build 123456)`, `(v1.6.1 + Multiplayer)` and `Version 4` styles.
 pub fn clean_listing_title(raw: &str) -> (String, Option<String>) {
-    let mut text = raw.trim().to_string();
+    let mut text = decode_entities(raw);
 
     // 1. Version markers in brackets/parens (may sit after "Free Download").
     let mut version = version_from_title(&text);
@@ -436,6 +436,66 @@ fn looks_like_version(s: &str) -> bool {
     !s.is_empty() && s.chars().next().is_some_and(|c| c.is_ascii_digit())
 }
 
+/// Decode HTML entities in scraped anchor text before any further processing,
+/// so titles like "Birds Aren&#039;t Real" produce clean slugs.
+pub fn decode_entities(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < text.len() {
+        if bytes[i] == b'&' {
+            let rest = &text[i..];
+            let decoded = if let Some(r) = rest.strip_prefix("&#039;") {
+                let _ = r;
+                Some(('\'', 6usize))
+            } else if let Some(r) = rest.strip_prefix("&#39;") {
+                let _ = r;
+                Some(('\x27', 5))
+            } else if let Some(r) = rest.strip_prefix("&#x27;") {
+                let _ = r;
+                Some(('\'', 6))
+            } else if let Some(r) = rest.strip_prefix("&quot;") {
+                let _ = r;
+                Some(('"', 6))
+            } else if let Some(r) = rest.strip_prefix("&amp;") {
+                let _ = r;
+                Some(('&', 5))
+            } else if let Some(r) = rest.strip_prefix("&lt;") {
+                let _ = r;
+                Some(('<', 4))
+            } else if let Some(r) = rest.strip_prefix("&gt;") {
+                let _ = r;
+                Some(('>', 4))
+            } else if let Some(r) = rest.strip_prefix("&nbsp;") {
+                let _ = r;
+                Some((' ', 6))
+            } else if let Some(r) = rest.strip_prefix("&eacute;") {
+                let _ = r;
+                Some(('é', 8))
+            } else if let Some(r) = rest.strip_prefix("&#8211;") {
+                let _ = r;
+                Some(('-', 7))
+            } else if let Some(r) = rest.strip_prefix("&#8212;") {
+                let _ = r;
+                Some(('-', 7))
+            } else {
+                None
+            };
+            if let Some((ch, len)) = decoded {
+                out.push(ch);
+                i += len;
+                continue;
+            }
+            out.push('&');
+            i += 1;
+        } else {
+            let ch = text[i..].chars().next().unwrap();
+            out.push(ch);
+            i += ch.len_utf8();
+        }
+    }
+    out.trim().to_string()
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -532,5 +592,21 @@ mod tests {
             join_url("https://steamunlocked.org/all-games", "a/"),
             "https://steamunlocked.org/all-games/a/"
         );
+    }
+}
+
+#[cfg(test)]
+mod entity_tests {
+    use super::*;
+
+    #[test]
+    fn decodes_common_entities_in_titles() {
+        assert_eq!(decode_entities("Birds Aren&#039;t Real"), "Birds Aren't Real");
+        assert_eq!(decode_entities("Rock &amp; Roll"), "Rock & Roll");
+        assert_eq!(decode_entities("A&quot;B"), "A\"B");
+        assert_eq!(decode_entities("Caf&eacute;"), "Café");
+        assert_eq!(decode_entities("x&#39;y"), "x'y");
+        assert_eq!(decode_entities("x&#039;y"), "x'y");
+        assert_eq!(decode_entities("plain title"), "plain title");
     }
 }

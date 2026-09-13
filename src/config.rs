@@ -7,6 +7,9 @@ pub struct Config {
     pub gamivoid_publishing_key: String,
     #[serde(default)]
     pub steam_api_key: Option<String>,
+    /// SteamSpy API base for real Steam user tags (override only for testing).
+    #[serde(default)]
+    pub steamspy_api: Option<String>,
     /// Steam storefront base URL (override only for testing).
     #[serde(default)]
     pub steam_store_api: Option<String>,
@@ -23,6 +26,11 @@ pub struct Config {
     /// published-games.json).
     #[serde(default)]
     pub published_manifest_path: Option<PathBuf>,
+    /// How listings are created: "draft" (default; published: false so you
+    /// can review) or "publish" (listings passing all publish gates go live
+    /// immediately).
+    #[serde(default)]
+    pub publish_mode: PublishMode,
     /// When true, no writes are made to gamivoid; the run validates and logs only.
     #[serde(default)]
     pub dry_run: bool,
@@ -73,5 +81,46 @@ impl Default for BatchConfig {
             seconds_limit: default_batch_seconds(),
             request_pause_ms: default_request_pause_ms(),
         }
+    }
+}
+
+/// Publishing mode: drafts first (safe) or direct publish.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PublishMode {
+    /// Create every listing as `published: false`; review in the dashboard,
+    /// then publish there or switch the mode.
+    #[default]
+    Draft,
+    /// Listings passing every publish gate get `published: true` right away;
+    /// anything incomplete stays a draft.
+    Publish,
+}
+
+impl PublishMode {
+    pub fn parse(s: &str) -> Option<PublishMode> {
+        match s.to_lowercase().as_str() {
+            "draft" => Some(PublishMode::Draft),
+            "publish" | "published" | "live" => Some(PublishMode::Publish),
+            _ => None,
+        }
+    }
+
+    pub fn is_publish(&self) -> bool {
+        matches!(self, PublishMode::Publish)
+    }
+}
+
+#[cfg(test)]
+mod publish_mode_tests {
+    use super::*;
+
+    #[test]
+    fn parses_modes() {
+        assert_eq!(PublishMode::parse("draft"), Some(PublishMode::Draft));
+        assert_eq!(PublishMode::parse("Publish"), Some(PublishMode::Publish));
+        assert_eq!(PublishMode::parse("nope"), None);
+        assert!(!PublishMode::default().is_publish());
+        assert!(PublishMode::Publish.is_publish());
     }
 }

@@ -1,16 +1,15 @@
 {
   "gamivoid_api_base": "https://gamivoid.site",
-  "gamivoid_publishing_key": "s4f_REPLACE_WITH_REAL_KEY",
+  "gamivoid_publishing_key": "s4f_YOUR_KEY_HERE",
   "steam_api_key": null,
-  "site_name": "Gamivoid",
+  "steam_store_api": null,
+  "steamspy_api": null,
   "sources": {
     "steamrip": {
-      "base_url": "https://steamrip.com",
-      "headers": {}
+      "base_url": "https://steamrip.com"
     },
     "steamunlocked": {
-      "base_url": "https://steamunlocked.net",
-      "headers": {}
+      "base_url": "https://steamunlocked.net"
     }
   },
   "batch": {
@@ -18,7 +17,8 @@
     "seconds_limit": 2700,
     "request_pause_ms": 250
   },
-  "state_path": "autogamivoid/state.json",
-  "published_manifest_path": "autogamivoid/published-games.json",
-  "dry_run": true
+  "state_path": "state.json",
+  "site_name": "Gamivoid",
+  "publish_mode": "draft",
+  "dry_run": false
 }

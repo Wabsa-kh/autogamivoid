@@ -1,0 +1,28 @@
+name: Reconcile (heal state + backfill drafts)
+
+# One-off recovery for the pre-guide era:
+# 1. Inventories every listing on the site (drafts included).
+# 2. Rebuilds state.json from that inventory (marks verified, so healthy
+#    listings are not re-created or skipped as phantoms).
+# 3. Backfills every draft with complete listing data (images, description,
+#    requirements, downloadLinks, SEO fields) using the new guide-shaped code.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action_limit:
+        description: 'Max backfills this run (re-run to continue)'
+        required: false
+        default: '300'
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    uses: ./.github/workflows/autogamivoid-run.yml
+    with:
+      action: reconcile
+      action_limit: ${{ inputs.action_limit }}
+      publish_mode: draft
+    secrets: inherit

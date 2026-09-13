@@ -22,12 +22,15 @@ fn main() -> Result<()> {
         match arg.as_str() {
             "--dry-run" => dry_run_override = true,
             "--action" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| anyhow::anyhow!("--action requires sync|catalog|updates"))?;
+                let value = args.next().ok_or_else(|| {
+                    anyhow::anyhow!("--action requires sync|catalog|updates|reconcile")
+                })?;
                 action = Some(
-                    RunAction::parse(&value)
-                        .ok_or_else(|| anyhow::anyhow!("unknown action '{value}' (use sync|catalog|updates)"))?,
+                    RunAction::parse(&value).ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "unknown action '{value}' (use sync|catalog|updates|reconcile)"
+                        )
+                    })?,
                 );
             }
             other => config_path = Some(other.to_string()),
@@ -47,7 +50,7 @@ fn main() -> Result<()> {
         info!("--dry-run flag set; no writes will be made");
     }
 
-    if !config.dry_run {
+    if !config.dry_run && action != Some(RunAction::Reconcile) {
         if config.gamivoid_api_base.is_empty() {
             anyhow::bail!("gamivoid_api_base must be configured (or use --dry-run)");
         }
@@ -60,13 +63,15 @@ fn main() -> Result<()> {
     info!("Action: {action:?}");
     let summary = tokio_block_on(async { run_action(config, action).await })?;
     info!(
-        "Summary: created={} updated={} unchanged={} invalid={} errors={} would_publish={} elapsed={:.1}s",
+        "Summary: created={} updated={} unchanged={} invalid={} errors={} would_publish={} published={} reconciled={} elapsed={:.1}s",
         summary.created,
         summary.updated,
         summary.unchanged,
         summary.invalid,
         summary.errors,
         summary.dry_run_would_publish,
+        summary.published,
+        summary.reconciled,
         summary.elapsed_seconds,
     );
 
@@ -98,6 +103,7 @@ mod tests {
         let parsed: Config = serde_json::from_str(&json).unwrap();
         assert_eq!(config.gamivoid_api_base, parsed.gamivoid_api_base);
         assert!(!parsed.dry_run);
+        assert_eq!(parsed.publish_mode, Default::default());
     }
 
     #[test]

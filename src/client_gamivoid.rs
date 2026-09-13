@@ -1,6 +1,8 @@
 use crate::client::HttpClient;
-use crate::models::{GamivoidGamePatch, GamivoidPublishedGame, Taxonomy};
-use tracing::{debug, info};
+use crate::models::{
+    parse_admin_games, parse_cursor, GameEnvelope, GamivoidGamePatch, Taxonomy,
+};
+use tracing::{debug, info, warn};
 
 pub struct GamivoidClient {
     http: HttpClient,
@@ -19,39 +21,30 @@ impl GamivoidClient {
         Ok(payload)
     }
 
-    /// Create a published game. Fails on slug collisions so caller can dedupe first.
-    pub async fn create_game(&self, body: &serde_json::Value) -> anyhow::Result<GamivoidPublishedGame> {
-        debug!(
-            "Creating game: {}",
-            body.get("slug").and_then(|v| v.as_str()).unwrap_or("?")
+    /// Create a game (draft or published per the payload). Returns the saved
+    /// listing from the guide's `{ "game": { ... } }` envelope (HTTP 201).
+    pub async fn create_game(
+        &self,
+        body: &serde_json::Value,
+    ) -> anyhow::Result<crate::models::GamivoidGameSummary> {
+        let slug = body.get("slug").and_then(|v| v.as_str()).unwrap_or("?");
+        debug!("Creating game: {slug}");
+        let envelope: GameEnvelope = self.http.post("/api/admin/games", body).await?;
+        info!(
+            "Created game: {} (published={})",
+            envelope.game.slug, envelope.game.published
         );
-        let payload: GamivoidPublishedGame = self.http.post("/api/admin/games", body).await?;
-        info!("Created game: {}", payload.slug);
         self.http.pause().await;
-        Ok(payload)
+        Ok(envelope.game)
     }
 
-    /// Update only the fields present in the patch.
-    pub async fn patch_game(&self, slug: &str, patch: &GamivoidGamePatch) -> anyhow::Result<()> {
-        debug!("Patching game: {}", slug);
-        let body = serde_json::to_value(patch)?;
-        let _: serde_json::Value = self
-            .http
-            .patch(&format!("/api/admin/games/{slug}"), &body)
-            .await?;
-        info!("Patched game: {}", slug);
-        self.http.pause().await;
-        Ok(())
-    }
-
-    /// Read one listing to decide whether it exists. Returns None on 404.
+    /// Read one owner listing (includes drafts). Returns None on 404.
     pub async fn get_game(&self, slug: &str) -> anyhow::Result<Option<serde_json::Value>> {
         let path = format!("/api/admin/games/{slug}");
-        let request = self.http.get::<serde_json::Value>(&path);
-        match request.await {
-            Ok(payload) => {
+        match self.http.send_raw(reqwest::Method::GET, &path, None, None).await {
+            Ok(raw) => {
                 self.http.pause().await;
-                Ok(Some(payload))
+                Ok(Some(raw.body))
             }
             Err(e) => {
                 if is_not_found(&e) {
@@ -62,8 +55,69 @@ impl GamivoidClient {
             }
         }
     }
+
+    /// Safe update: GET for the current ETag, then PATCH with `If-Match`.
+    /// A 412 (stale ETag) is retried once with the fresh ETag. Returns the
+    /// normalized saved listing.
+    pub async fn patch_game(
+        &self,
+        slug: &str,
+        patch: &GamivoidGamePatch,
+    ) -> anyhow::Result<crate::models::GamivoidGameSummary> {
+        debug!("Patching game: {slug}");
+        let path = format!("/api/admin/games/{slug}");
+        let raw = self.http.patch_with_etag(&path, patch).await?;
+        let summary: crate::models::GamivoidGameSummary = serde_json::from_value(raw.body)
+            .unwrap_or(crate::models::GamivoidGameSummary {
+                slug: slug.to_string(),
+                published: false,
+                etag: raw.etag,
+            });
+        info!("Patched game: {slug}");
+        self.http.pause().await;
+        Ok(summary)
+    }
+
+    /// List ALL owner listings (drafts included), following the cursor when
+    /// the response paginates. Used by the reconcile action.
+    pub async fn list_admin_games(&self) -> anyhow::Result<Vec<crate::models::AdminGame>> {
+        let mut all = Vec::new();
+        let mut after: Option<String> = None;
+        loop {
+            let path = match &after {
+                Some(cursor) => format!("/api/admin/games?limit=100&after={cursor}"),
+                None => "/api/admin/games?limit=100".to_string(),
+            };
+            let raw = self
+                .http
+                .send_raw(reqwest::Method::GET, &path, None, None)
+                .await?;
+            all.extend(parse_admin_games(&raw.body));
+            match parse_cursor(&raw.body) {
+                Some((true, Some(next))) => {
+                    after = Some(next);
+                    self.http.pause().await;
+                }
+                _ => break,
+            }
+        }
+        info!("Listed {} owner games", all.len());
+        Ok(all)
+    }
+
+    /// Delete a listing (reconcile cleanup of broken drafts).
+    pub async fn delete_game(&self, slug: &str) -> anyhow::Result<()> {
+        debug!("Deleting game: {slug}");
+        let path = format!("/api/admin/games/{slug}");
+        self.http
+            .send_raw(reqwest::Method::DELETE, &path, None, None)
+            .await?;
+        warn!("Deleted game: {slug}");
+        self.http.pause().await;
+        Ok(())
+    }
 }
 
 fn is_not_found(err: &anyhow::Error) -> bool {
-    err.to_string().contains("404")
+    err.to_string().contains("HTTP 404")
 }

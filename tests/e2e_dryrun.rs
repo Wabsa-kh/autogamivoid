@@ -28,19 +28,36 @@ fn spawn_mock_gamivoid() -> MockServer {
                 let request = String::from_utf8_lossy(&buf[..n]).to_string();
                 let first_line = request.lines().next().unwrap_or_default().to_string();
 
-                let (status, body) = if first_line.starts_with("GET /api/taxonomy") {
+                // Guide shape: create/patch answer with `{"game": {...}}`.
+                let (status, body): (&str, String) = if first_line.starts_with("GET /api/taxonomy")
+                {
                     (
                         "200 OK",
-                        r#"{"categories":["Action","Adventure","RPG","Strategy"]}"#,
+                        r#"{"categories":["Action","Adventure","RPG","Strategy"]}"#.to_string(),
                     )
                 } else if first_line.starts_with("POST /api/admin/games") {
                     writes_clone.fetch_add(1, Ordering::SeqCst);
-                    ("201 Created", r#"{"slug":"mocked"}"#)
+                    let slug = extract_slug(&request).unwrap_or_else(|| "unknown".into());
+                    (
+                        "201 Created",
+                        format!(r#"{{"game":{{"slug":"{slug}","published":false}}}}"#),
+                    )
                 } else if first_line.starts_with("PATCH /api/admin/games") {
                     writes_clone.fetch_add(1, Ordering::SeqCst);
-                    ("200 OK", r#"{"ok":true}"#)
+                    let slug = first_line
+                        .split_whitespace()
+                        .nth(1)
+                        .unwrap_or("/api/admin/games/unknown")
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or("unknown")
+                        .to_string();
+                    (
+                        "200 OK",
+                        format!(r#"{{"slug":"{slug}","published":true}}"#),
+                    )
                 } else {
-                    ("404 Not Found", r#"{"error":"not found"}"#)
+                    ("404 Not Found", r#"{"error":"not found"}"#.to_string())
                 };
 
                 let response = format!(
@@ -169,6 +186,9 @@ fn config_for(api_base: &str, source_base: &str) -> autogamivoid::Config {
         gamivoid_publishing_key: "s4f_test_key".into(),
         steam_api_key: None,
         steam_store_api: Some(spawn_mock_steam()),
+        // Port 1 refuses instantly: keeps tests hermetic (no real SteamSpy).
+        steamspy_api: Some("http://127.0.0.1:1".into()),
+        publish_mode: autogamivoid::config::PublishMode::Draft,
         sources: autogamivoid::config::Sources {
             steamrip: autogamivoid::config::SourceEndpoint {
                 base_url: source_base.to_string(),
@@ -302,6 +322,14 @@ fn second_run_skips_unchanged_games() {
 // by the unit tests in downloads.rs and workflow.rs.
 fn bump_source_version() -> bool {
     false
+}
+
+/// Pull the `slug` out of a JSON request body (mock helper).
+fn extract_slug(request: &str) -> Option<String> {
+    let idx = request.find("\"slug\":\"")? + 8;
+    let rest = &request[idx..];
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
 }
 
 fn tokio_runtime() -> tokio::runtime::Runtime {

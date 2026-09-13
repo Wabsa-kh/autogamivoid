@@ -58,6 +58,7 @@ impl Index {
                 last_version: version,
                 last_download_source: source,
                 published_at,
+                verified: false,
             },
         );
     }
@@ -168,6 +169,88 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
     let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
     (if m <= 2 { y + 1 } else { y }, m, d)
+}
+
+// Verified-flag plumbing: `verified` is only set by confirmations from the
+// live API (create/patch responses, reconcile hits). Entries loaded from
+// older state files default to false so they are republished.
+impl Index {
+    /// Record a listing after a confirmed create/patch on the site.
+    pub fn remember_verified(
+        &mut self,
+        slug: &str,
+        title: Option<String>,
+        version: Option<String>,
+        source: Option<SourceLabel>,
+    ) {
+        let published_at = match self.entries.get(slug) {
+            Some(existing) => existing.published_at.clone(),
+            None => Some(now_rfc3339()),
+        };
+        self.entries.insert(
+            slug.to_string(),
+            IndexEntry {
+                slug: slug.to_string(),
+                title,
+                last_version: version,
+                last_download_source: source,
+                published_at,
+                verified: true,
+            },
+        );
+    }
+
+    /// Mark an existing entry as confirmed on the site (reconcile).
+    pub fn mark_verified(&mut self, slug: &str) {
+        if let Some(entry) = self.entries.get_mut(slug) {
+            entry.verified = true;
+        }
+    }
+
+    /// Slugs present in state but never confirmed against the live site.
+    pub fn unverified(&self) -> Vec<String> {
+        self.entries
+            .iter()
+            .filter(|(_, e)| !e.verified)
+            .map(|(s, _)| s.clone())
+            .collect()
+    }
+}
+
+impl Index {
+    /// Reconcile helper: mark verified if present, otherwise insert a new
+    /// verified entry for a listing confirmed to exist on the site.
+    pub fn verify_or_insert(&mut self, slug: &str, title: Option<String>) {
+        if self.entries.contains_key(slug) {
+            if let Some(entry) = self.entries.get_mut(slug) {
+                entry.verified = true;
+                if entry.title.is_none() {
+                    entry.title = title.clone();
+                }
+            }
+        } else {
+            self.entries.insert(
+                slug.to_string(),
+                IndexEntry {
+                    slug: slug.to_string(),
+                    title,
+                    last_version: None,
+                    last_download_source: None,
+                    published_at: Some(now_rfc3339()),
+                    verified: true,
+                },
+            );
+        }
+    }
+}
+
+impl Index {
+    /// Where the published-games manifest is written: beside the state file.
+    pub fn manifest_path(&self) -> Option<std::path::PathBuf> {
+        self.state_path
+            .as_ref()
+            .map(|p| p.with_file_name("published-games.json"))
+    }
 }
 
 #[cfg(test)]
