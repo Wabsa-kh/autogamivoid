@@ -1,6 +1,6 @@
 use crate::client::HttpClient;
 use crate::models::{
-    parse_admin_games, parse_cursor, GameEnvelope, GamivoidGamePatch, Taxonomy,
+    parse_admin_games, GameEnvelope, GamivoidGamePatch, Taxonomy,
 };
 use tracing::{debug, info, warn};
 
@@ -78,28 +78,27 @@ impl GamivoidClient {
         Ok(summary)
     }
 
-    /// List ALL owner listings (drafts included), following the cursor when
-    /// the response paginates. Used by the reconcile action.
+    /// List ALL owner listings (drafts included), following page-based
+    /// pagination (page/limit/pages per the OpenAPI spec). Used by reconcile.
     pub async fn list_admin_games(&self) -> anyhow::Result<Vec<crate::models::AdminGame>> {
         let mut all = Vec::new();
-        let mut after: Option<String> = None;
+        let mut page = 1usize;
         loop {
-            let path = match &after {
-                Some(cursor) => format!("/api/admin/games?limit=100&after={cursor}"),
-                None => "/api/admin/games?limit=100".to_string(),
-            };
+            let path = format!("/api/admin/games?limit=100&page={page}");
             let raw = self
                 .http
                 .send_raw(reqwest::Method::GET, &path, None, None)
                 .await?;
-            all.extend(parse_admin_games(&raw.body));
-            match parse_cursor(&raw.body) {
-                Some((true, Some(next))) => {
-                    after = Some(next);
-                    self.http.pause().await;
-                }
-                _ => break,
+            let batch = parse_admin_games(&raw.body);
+            let got = batch.len();
+            all.extend(batch);
+            // Advance while a full page comes back; an empty or short page
+            // means we've reached the end.
+            if got < 100 {
+                break;
             }
+            page += 1;
+            self.http.pause().await;
         }
         info!("Listed {} owner games", all.len());
         Ok(all)

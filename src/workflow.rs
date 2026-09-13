@@ -4,12 +4,12 @@ use crate::downloads::choose_download;
 use crate::enrichment::{build_enriched, EnrichmentInput};
 use crate::index::Index;
 use crate::matching::match_sources;
-use crate::models::{EnrichedGame, GamivoidGamePatch, Taxonomy};
+use crate::models::{EnrichedGame, GamivoidGamePatch, MatchedGame, Taxonomy};
 use crate::scraper::{
     scrape_catalog_steamrip, scrape_catalog_steamunlocked, scrape_steamrip, scrape_steamunlocked,
 };
+use tracing::{debug, info, warn};
 use std::time::Instant;
-use tracing::{info, warn};
 
 /// What a run should do.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -245,15 +245,9 @@ async fn run_sync(config: Config) -> anyhow::Result<RunSummary> {
 // Catalog run: walk A-Z hubs and import every game, one by one
 // ---------------------------------------------------------------------------
 
-async fn run_catalog(config: Config) -> anyhow::Result<RunSummary> {
-    let start = Instant::now();
-    info!(
-        "Starting autogamivoid CATALOG run (dry_run={}, publish_mode={:?}, action_limit={})",
-        config.dry_run, config.publish_mode, config.batch.action_limit
-    );
-    let mut ctx = make_context(&config, start).await?;
-    let mut summary = RunSummary::default();
-
+/// Fetch and match the full A-Z catalogs from both sources. Shared by the
+/// catalog and reconcile actions. Fails only when BOTH scrapes fail.
+async fn collect_catalog(config: &Config) -> anyhow::Result<Vec<MatchedGame>> {
     info!("Fetching full A-Z catalogs from both sources");
     let sr = scrape_catalog_steamrip(&config.sources.steamrip).await;
     let su = scrape_catalog_steamunlocked(&config.sources.steamunlocked).await;
@@ -273,8 +267,21 @@ async fn run_catalog(config: Config) -> anyhow::Result<RunSummary> {
     };
     info!("Catalog sizes: {} steamrip + {} steamunlocked", sr.len(), su.len());
 
-    let games = match_sources(sr, su);
+    let games: Vec<MatchedGame> = match_sources(sr, su);
     info!("Catalog matched into {} unique games", games.len());
+    Ok(games)
+}
+
+async fn run_catalog(config: Config) -> anyhow::Result<RunSummary> {
+    let start = Instant::now();
+    info!(
+        "Starting autogamivoid CATALOG run (dry_run={}, publish_mode={:?}, action_limit={})",
+        config.dry_run, config.publish_mode, config.batch.action_limit
+    );
+    let mut ctx = make_context(&config, start).await?;
+    let mut summary = RunSummary::default();
+
+    let games = collect_catalog(&config).await?;
 
     for game in &games {
         if !time_and_budget_left(&ctx, &summary) {
@@ -471,6 +478,72 @@ async fn run_reconcile(config: Config) -> anyhow::Result<RunSummary> {
     }
 
     summary.unchanged = published; // informational: real published games
+
+    // Backfill pass: drafts lack the complete guide data (images, article,
+    // requirements, downloadLinks, SEO fields). Rebuild each one from the
+    // A-Z catalog the same way the catalog action does, then PATCH.
+    let draft_slugs: Vec<String> = admin_games
+        .iter()
+        .filter(|g| !g.published)
+        .map(|g| g.slug.clone())
+        .collect();
+    if !draft_slugs.is_empty() {
+        info!(
+            "Backfilling {} draft listings with complete guide data",
+            draft_slugs.len()
+        );
+        let catalog = collect_catalog(&config).await?;
+        let mut by_slug = std::collections::HashMap::new();
+        for game in &catalog {
+            let slug = crate::slug::slug_from_title(&game.raw_title);
+            by_slug.insert(slug, game.clone());
+        }
+
+        for slug in &draft_slugs {
+            if !time_and_budget_left(&ctx, &summary) {
+                info!("Reached time/action budget; remaining drafts continue next run");
+                break;
+            }
+            let Some(game) = by_slug.get(slug) else {
+                debug!("Draft {slug} not in current catalog; skipping backfill");
+                continue;
+            };
+            let best = choose_download(
+                &game
+                    .candidates
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect::<Vec<_>>(),
+            );
+            let Some(enriched) = enrich_game(game, &config).await else {
+                summary.errors += 1;
+                continue;
+            };
+            if let Some((client, taxonomy)) = &ctx.publisher {
+                match update_listing(client, taxonomy, slug, &enriched, &config).await {
+                    Ok(published_now) => {
+                        summary.updated += 1;
+                        summary.acted += 1;
+                        if published_now {
+                            summary.published += 1;
+                        }
+                        ctx.index.remember_verified(
+                            slug,
+                            Some(enriched.raw_title.trim().to_string()),
+                            best.version.as_deref().map(str::to_string),
+                            Some(best.source_label),
+                        );
+                    }
+                    Err(e) => {
+                        warn!("Backfill failed for {slug}: {e:#}");
+                        summary.errors += 1;
+                    }
+                }
+            }
+        }
+    }
+
     finish(&mut ctx, &mut summary, start)?;
     Ok(summary)
 }

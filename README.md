@@ -147,9 +147,32 @@ record but writes nothing. Force dry-run on any config with `--dry-run`.
 | `autogamivoid-catalog.yml` | `0 */6 * * *` | A-Z import, resumes each run |
 | `autogamivoid-updates.yml` | `0 5 * * *` | Re-check published games for updates |
 | `autogamivoid.yml` | `0 3 * * 0` | Fresh-listing sync (new + changed) |
+| `autogamivoid-reconcile.yml` | manual | Heal state from the site, backfill incomplete drafts |
 
 Each workflow commits updated `state.json` / `published-games.json` back to the
 repo, which is what makes the next run resume and skip unchanged games.
+
+### Publish modes
+
+`publish_mode` in the config (or the workflow input) controls what happens when
+a listing passes every publish gate:
+
+- `draft` (default): every listing is created with `published: false`. Review
+  in the dashboard, then flip them live there, or switch the mode.
+- `publish`: complete listings go live immediately; anything missing required
+  data stays a draft.
+
+### The reconcile action
+
+`--action reconcile` (or the manual workflow) is the recovery tool:
+
+1. Lists every listing on the site (drafts included).
+2. Rebuilds `state.json` from that inventory, marking entries verified so
+   healthy games are not re-created or skipped as phantoms.
+3. Backfills each draft with complete data (images, description, article,
+   requirements, download links, SEO fields), `action_limit` per run.
+
+Run it once after enabling the key, or any time state and site disagree.
 
 ## Safety model
 
