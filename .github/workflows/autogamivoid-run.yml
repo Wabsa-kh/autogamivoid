@@ -36,6 +36,8 @@ jobs:
   run:
     name: ${{ inputs.action }}
     runs-on: ubuntu-latest
+    env:
+      AUTOGAMIVOID_CONFIG: autogamivoid.config.json
     steps:
       - uses: actions/checkout@v4
 
