@@ -7,9 +7,9 @@ name: Catalog import (A-Z all games)
 # to go faster.
 
 on:
-  schedule:
+ # schedule:
     # Every 6 hours; each run imports up to action_limit games then resumes.
-    - cron: '0 */6 * * *'
+  #  - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       action_limit:
